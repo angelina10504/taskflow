@@ -1,0 +1,24 @@
+# TaskFlow - Team Collaboration & Project Management Platform
+
+A modern, real-time project management tool built with the MERN stack.
+
+## Features
+- Real-time collaboration
+- Task management with Kanban boards
+- Time tracking
+- Team workspaces
+- File attachments
+- Notifications
+
+## Tech Stack
+- **Frontend**: React, Chakra UI, Socket.IO Client
+- **Backend**: Node.js, Express, Socket.IO
+- **Database**: MongoDB
+- **Authentication**: JWT
+
+## Getting Started
+(Instructions coming soon...)
+
+## Author
+Angelina Gupta
+
