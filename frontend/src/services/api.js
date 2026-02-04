@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getAccessToken, refreshAccessToken, logout } from './authService';
 
-// Create axios instance with base URL
+// Create axios instance
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
   headers: {
@@ -8,7 +9,47 @@ const api = axios.create({
   },
 });
 
-// Test function to check backend connection
+// Request interceptor - Add auth token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        logout();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Test function
 export const testConnection = async () => {
   try {
     const response = await api.get('/');

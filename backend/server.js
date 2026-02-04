@@ -19,8 +19,8 @@ app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
 }));
-app.use(express.json()); // Parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Simple test route
 app.get('/', (req, res) => {
@@ -30,7 +30,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// Create HTTP server (needed for Socket.IO)
+// API Routes
+app.use('/api/auth', require('./routes/auth'));
+
+// Create HTTP server
 const httpServer = createServer(app);
 
 // Initialize Socket.IO
