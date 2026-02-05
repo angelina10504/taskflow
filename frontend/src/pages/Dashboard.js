@@ -17,7 +17,7 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  // Simple avatar component
+  // Simple avatar component (since Chakra v3 Avatar is different)
   const UserAvatar = ({ name }) => {
     const initials = name
       ?.split(' ')
@@ -28,8 +28,8 @@ const Dashboard = () => {
     
     return (
       <Box
-        w="40px"
-        h="40px"
+        w="32px"
+        h="32px"
         borderRadius="full"
         bg="blue.500"
         color="white"
@@ -37,7 +37,7 @@ const Dashboard = () => {
         alignItems="center"
         justifyContent="center"
         fontWeight="bold"
-        fontSize="sm"
+        fontSize="xs"
       >
         {initials}
       </Box>

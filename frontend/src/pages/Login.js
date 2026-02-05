@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Input, Heading, Text } from '@chakra-ui/react';
+import { Box, Button, Input, Heading, Text, Field } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -17,12 +17,8 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
