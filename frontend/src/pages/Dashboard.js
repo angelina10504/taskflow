@@ -5,6 +5,7 @@ import {
   Heading,
   Text,
   Button,
+  Avatar,
 } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,33 +16,6 @@ const Dashboard = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  // Simple avatar component (since Chakra v3 Avatar is different)
-  const UserAvatar = ({ name }) => {
-    const initials = name
-      ?.split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'U';
-    
-    return (
-      <Box
-        w="32px"
-        h="32px"
-        borderRadius="full"
-        bg="blue.500"
-        color="white"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        fontWeight="bold"
-        fontSize="xs"
-      >
-        {initials}
-      </Box>
-    );
   };
 
   return (
@@ -67,7 +41,9 @@ const Dashboard = () => {
           </Heading>
           <Box display="flex" gap={4} alignItems="center">
             <Box display="flex" gap={2} alignItems="center">
-              <UserAvatar name={user?.name} />
+              <Avatar.Root size="sm">
+                <Avatar.Fallback>{user?.name?.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+              </Avatar.Root>
               <Text fontWeight="medium">{user?.name}</Text>
             </Box>
             <Button colorScheme="red" variant="outline" onClick={handleLogout}>

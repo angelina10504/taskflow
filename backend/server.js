@@ -32,6 +32,7 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/workspaces', require('./routes/workspaces')); // ADD THIS LINE
 
 // Create HTTP server
 const httpServer = createServer(app);
