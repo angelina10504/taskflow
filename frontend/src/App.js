@@ -6,6 +6,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Workspaces from './pages/Workspaces';
 
 function App() {
   return (
@@ -23,8 +24,16 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/workspaces"
+            element={
+              <ProtectedRoute>
+                <Workspaces />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/workspaces" replace />} />
+          <Route path="*" element={<Navigate to="/workspaces" replace />} />
         </Routes>
       </AuthProvider>
     </>

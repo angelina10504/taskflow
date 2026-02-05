@@ -77,20 +77,19 @@ const Dashboard = () => {
           </Box>
         </Box>
 
-        {/* Coming Soon Card */}
-        <Box bg="white" p={6} borderRadius="lg" boxShadow="md">
-          <Heading size="lg" mb={4}>Coming Soon</Heading>
-          <Text color="gray.600" mb={4}>
-            We're building amazing features for you:
-          </Text>
-          <Box pl={4}>
-            <Text mb={2}>• Create and manage workspaces</Text>
-            <Text mb={2}>• Collaborate with team members</Text>
-            <Text mb={2}>• Track tasks and projects</Text>
-            <Text mb={2}>• Real-time updates</Text>
-            <Text>• Time tracking</Text>
-          </Box>
-        </Box>
+        {/* Quick Actions Card */}
+<Box bg="white" p={6} borderRadius="lg" boxShadow="md">
+  <Heading size="lg" mb={4}>Quick Actions</Heading>
+  <Box display="flex" flexDirection="column" gap={3}>
+    <Button
+      colorScheme="blue"
+      size="lg"
+      onClick={() => navigate('/workspaces')}
+    >
+      📁 Go to Workspaces
+    </Button>
+  </Box>
+</Box>
       </Box>
     </Box>
   );
