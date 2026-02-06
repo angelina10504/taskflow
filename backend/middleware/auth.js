@@ -33,7 +33,7 @@ const protect = async (req, res, next) => {
         });
       }
 
-      next();
+      return next(); // ✅ Added 'return' here
     } catch (error) {
       console.error('Auth middleware error:', error);
       return res.status(401).json({
@@ -43,12 +43,11 @@ const protect = async (req, res, next) => {
     }
   }
 
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Not authorized, no token',
-    });
-  }
+  // ✅ This now only runs if no authorization header was found
+  return res.status(401).json({
+    success: false,
+    message: 'Not authorized, no token',
+  });
 };
 
 module.exports = { protect };

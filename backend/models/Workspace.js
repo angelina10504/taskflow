@@ -73,7 +73,7 @@ const workspaceSchema = new mongoose.Schema(
 );
 
 // Automatically add owner to members when workspace is created
-workspaceSchema.pre('save', function () {
+workspaceSchema.pre('save', function (next) {  // ✅ Added 'next' parameter
   if (this.isNew) {
     this.members.push({
       user: this.owner,
@@ -81,6 +81,7 @@ workspaceSchema.pre('save', function () {
       joinedAt: new Date(),
     });
   }
+  next();  // ✅ Added next() call
 });
 
 module.exports = mongoose.model('Workspace', workspaceSchema);
