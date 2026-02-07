@@ -16,7 +16,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: process.env.CLIENT_URL || '*',
   credentials: true
 }));
 app.use(express.json());
@@ -26,7 +26,8 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 TaskFlow API is running!',
-    version: '1.0.0'
+    version: '1.0.0',
+    environment: process.env.NODE_ENV
   });
 });
 
@@ -34,7 +35,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/workspaces', require('./routes/workspaces'));
 app.use('/api/projects', require('./routes/projects'));
-app.use('/api/tasks', require('./routes/tasks')); // ADD THIS LINE
+app.use('/api/tasks', require('./routes/tasks'));
 
 // Create HTTP server
 const httpServer = createServer(app);
@@ -42,7 +43,7 @@ const httpServer = createServer(app);
 // Initialize Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL || '*',
     credentials: true
   }
 });
@@ -58,6 +59,6 @@ io.on('connection', (socket) => {
 
 // Start server
 const PORT = process.env.PORT || 5001;
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
