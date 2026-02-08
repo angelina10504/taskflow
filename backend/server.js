@@ -8,6 +8,9 @@ const connectDB = require('./config/db');
 // Load environment variables
 dotenv.config();
 
+console.log('✅ Environment loaded');
+console.log('📍 MongoDB URI exists:', !!process.env.MONGODB_URI);
+
 // Connect to MongoDB
 connectDB();
 
@@ -31,11 +34,21 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/workspaces', require('./routes/workspaces'));
-app.use('/api/projects', require('./routes/projects'));
-app.use('/api/tasks', require('./routes/tasks'));
+// API Routes with error handling
+try {
+  console.log('📂 Loading routes...');
+  app.use('/api/auth', require('./routes/auth'));
+  console.log('✅ Auth routes loaded');
+  app.use('/api/workspaces', require('./routes/workspaces'));
+  console.log('✅ Workspace routes loaded');
+  app.use('/api/projects', require('./routes/projects'));
+  console.log('✅ Project routes loaded');
+  app.use('/api/tasks', require('./routes/tasks'));
+  console.log('✅ Task routes loaded');
+} catch (error) {
+  console.error('❌ Error loading routes:', error);
+  process.exit(1);
+}
 
 // Create HTTP server
 const httpServer = createServer(app);

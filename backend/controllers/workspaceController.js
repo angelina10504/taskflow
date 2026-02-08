@@ -8,10 +8,13 @@ const getWorkspaces = async (req, res) => {
   try {
     const workspaces = await Workspace.find({
       'members.user': req.user.id,
-    })
-      .populate('owner', 'name email avatar')
-      .populate('members.user', 'name email avatar')
-      .sort('-createdAt');
+    }).sort('-createdAt');
+
+    // Manually populate to avoid join errors
+    for (let workspace of workspaces) {
+      await workspace.populate('owner', 'name email avatar');
+      await workspace.populate('members.user', 'name email avatar');
+    }
 
     res.status(200).json({
       success: true,
