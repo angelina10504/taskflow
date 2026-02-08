@@ -6,6 +6,8 @@ const {
   updateWorkspace,
   deleteWorkspace,
   leaveWorkspace,
+  inviteMember,
+  removeMember,
 } = require('../controllers/workspaceController');
 const { protect } = require('../middleware/auth');
 
@@ -19,5 +21,7 @@ router.route('/').get(getWorkspaces).post(createWorkspace);
 router.route('/:id').get(getWorkspace).put(updateWorkspace).delete(deleteWorkspace);
 
 router.post('/:id/leave', leaveWorkspace);
+router.post('/:id/invite', inviteMember);                    // ADD THIS
+router.delete('/:id/members/:userId', removeMember);   
 
 module.exports = router;

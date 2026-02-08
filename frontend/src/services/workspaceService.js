@@ -59,3 +59,23 @@ export const leaveWorkspace = async (id) => {
     throw error.response?.data || { message: 'Failed to leave workspace' };
   }
 };
+
+// Invite member to workspace
+export const inviteMember = async (workspaceId, inviteData) => {
+  try {
+    const response = await api.post(`/api/workspaces/${workspaceId}/invite`, inviteData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to invite member' };
+  }
+};
+
+// Remove member from workspace
+export const removeMember = async (workspaceId, userId) => {
+  try {
+    const response = await api.delete(`/api/workspaces/${workspaceId}/members/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to remove member' };
+  }
+};

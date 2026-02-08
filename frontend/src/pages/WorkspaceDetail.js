@@ -15,6 +15,7 @@ import {
 import { toaster } from '../components/ui/toaster';
 import { useAuth } from '../context/AuthContext';
 import * as workspaceService from '../services/workspaceService';
+import InviteMemberModal from '../components/workspace/InviteMemberModal';
 
 const WorkspaceDetail = () => {
   const { id } = useParams();
@@ -25,6 +26,7 @@ const WorkspaceDetail = () => {
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   useEffect(() => {
     fetchWorkspace();
@@ -131,6 +133,54 @@ const handleDeleteProject = async (projectId) => {
     toaster.create({
       title: 'Error',
       description: error.message || 'Failed to delete project',
+      type: 'error',
+      duration: 5000,
+    });
+  }
+};
+const handleInviteMember = async (inviteData) => {
+  try {
+    const data = await workspaceService.inviteMember(id, inviteData);
+    
+    toaster.create({
+      title: 'Success',
+      description: data.message,
+      type: 'success',
+      duration: 3000,
+    });
+    
+    // Refresh workspace to show new member
+    fetchWorkspace();
+  } catch (error) {
+    toaster.create({
+      title: 'Error',
+      description: error.message || 'Failed to invite member',
+      type: 'error',
+      duration: 5000,
+    });
+  }
+};
+
+const handleRemoveMember = async (userId) => {
+  if (!window.confirm('Are you sure you want to remove this member?')) {
+    return;
+  }
+
+  try {
+    await workspaceService.removeMember(id, userId);
+    
+    toaster.create({
+      title: 'Success',
+      description: 'Member removed successfully',
+      type: 'success',
+      duration: 3000,
+    });
+    
+    fetchWorkspace();
+  } catch (error) {
+    toaster.create({
+      title: 'Error',
+      description: error.message || 'Failed to remove member',
       type: 'error',
       duration: 5000,
     });
@@ -292,36 +342,62 @@ const handleDeleteProject = async (projectId) => {
         </Box>
 
         {/* Members Section */}
-        <Box bg="white" p={6} borderRadius="lg" boxShadow="md" mb={6}>
-          <Heading size="lg" mb={4}>
-            Team Members
-          </Heading>
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
-            {workspace.members?.map((member) => (
-              <Box
-                key={member._id}
-                p={4}
-                borderRadius="md"
-                border="1px solid"
-                borderColor="gray.200"
-                display="flex"
-                alignItems="center"
-                gap={3}
-              >
-                <MemberAvatar name={member.user.name} size="md" />
-                <Box flex={1}>
-                  <Text fontWeight="medium">{member.user.name}</Text>
-                  <Text fontSize="sm" color="gray.600">
-                    {member.user.email}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500" mt={1} textTransform="capitalize">
-                    {member.role}
-                  </Text>
-                </Box>
-              </Box>
-            ))}
-          </SimpleGrid>
+<Box bg="white" p={6} borderRadius="lg" boxShadow="md" mb={6}>
+  <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+    <Heading size="lg">Team Members</Heading>
+    {(isOwner || workspace.members?.find(m => m.user._id === user?.id)?.role === 'admin') && (
+      <Button colorScheme="blue" onClick={() => setIsInviteModalOpen(true)}>
+        + Invite Member
+      </Button>
+    )}
+  </Box>
+  
+  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+    {workspace.members?.map((member) => (
+      <Box
+        key={member._id}
+        p={4}
+        borderRadius="md"
+        border="1px solid"
+        borderColor="gray.200"
+        display="flex"
+        alignItems="center"
+        gap={3}
+      >
+        <MemberAvatar name={member.user.name} size="md" />
+        <Box flex={1}>
+          <Text fontWeight="medium">{member.user.name}</Text>
+          <Text fontSize="sm" color="gray.600">
+            {member.user.email}
+          </Text>
+          <Text fontSize="xs" color="gray.500" mt={1} textTransform="capitalize">
+            {member.role}
+          </Text>
         </Box>
+        {(isOwner || workspace.members?.find(m => m.user._id === user?.id)?.role === 'admin') && 
+         member.role !== 'owner' && 
+         member.user._id !== user?.id && (
+          <Button
+            size="sm"
+            colorScheme="red"
+            variant="ghost"
+            onClick={() => handleRemoveMember(member.user._id)}
+          >
+            Remove
+          </Button>
+        )}
+      </Box>
+    ))}
+  </SimpleGrid>
+</Box>
+
+{/* Add modal at the end */}
+<InviteMemberModal
+  isOpen={isInviteModalOpen}
+  onClose={() => setIsInviteModalOpen(false)}
+  onInvite={handleInviteMember}
+  workspaceId={id}
+/>
 
         {/* Projects Section */}
 <Box bg="white" p={6} borderRadius="lg" boxShadow="md">

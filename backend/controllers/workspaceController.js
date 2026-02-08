@@ -244,6 +244,159 @@ const leaveWorkspace = async (req, res) => {
   }
 };
 
+const inviteMember = async (req, res) => {
+  try {
+    const { email, role } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required',
+      });
+    }
+
+    const workspace = await Workspace.findById(req.params.id);
+
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found',
+      });
+    }
+
+    // Check if requester is owner or admin
+    const member = workspace.members.find(
+      (m) => m.user.toString() === req.user.id
+    );
+
+    if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only workspace owner or admin can invite members',
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      // Check if already a member
+      const isMember = workspace.members.some(
+        (m) => m.user.toString() === existingUser._id.toString()
+      );
+
+      if (isMember) {
+        return res.status(400).json({
+          success: false,
+          message: 'User is already a member of this workspace',
+        });
+      }
+
+      // Add user directly to workspace
+      workspace.members.push({
+        user: existingUser._id,
+        role: role || 'member',
+        joinedAt: new Date(),
+      });
+
+      await workspace.save();
+      await workspace.populate('members.user', 'name email avatar');
+
+      return res.status(200).json({
+        success: true,
+        message: `${existingUser.name} has been added to the workspace`,
+        workspace,
+      });
+    } else {
+      // User doesn't exist - create invitation
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+
+      workspace.invitations.push({
+        email,
+        role: role || 'member',
+        token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        invitedBy: req.user.id,
+      });
+
+      await workspace.save();
+
+      // TODO: Send email with invitation link
+      // For now, return the invitation info
+
+      res.status(200).json({
+        success: true,
+        message: `Invitation sent to ${email}`,
+        invitationLink: `${process.env.CLIENT_URL}/invite/${token}`,
+      });
+    }
+  } catch (error) {
+    console.error('Invite member error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+const removeMember = async (req, res) => {
+  try {
+    const workspace = await Workspace.findById(req.params.id);
+
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found',
+      });
+    }
+
+    // Check if requester is owner or admin
+    const requester = workspace.members.find(
+      (m) => m.user.toString() === req.user.id
+    );
+
+    if (!requester || (requester.role !== 'owner' && requester.role !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only workspace owner or admin can remove members',
+      });
+    }
+
+    // Can't remove the owner
+    const targetMember = workspace.members.find(
+      (m) => m.user.toString() === req.params.userId
+    );
+
+    if (targetMember && targetMember.role === 'owner') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot remove workspace owner',
+      });
+    }
+
+    // Remove member
+    workspace.members = workspace.members.filter(
+      (m) => m.user.toString() !== req.params.userId
+    );
+
+    await workspace.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Member removed from workspace',
+    });
+  } catch (error) {
+    console.error('Remove member error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getWorkspaces,
   getWorkspace,
@@ -251,4 +404,6 @@ module.exports = {
   updateWorkspace,
   deleteWorkspace,
   leaveWorkspace,
+  inviteMember,     
+  removeMember,  
 };
