@@ -8,6 +8,13 @@ const PRIORITY_COLORS = {
   urgent: 'red.500',
 };
 
+const PRIORITY_BORDER = {
+  low: '#d1d5db',
+  medium: '#facc15',
+  high: '#fb923c',
+  urgent: '#ef4444',
+};
+
 const PRIORITY_LABELS = {
   low: 'Low',
   medium: 'Medium',
@@ -28,6 +35,8 @@ const TaskCard = ({ task, onClick }) => {
       transition="all 0.2s"
       border="1px solid"
       borderColor="gray.200"
+      borderLeft="4px solid"
+      style={{ borderLeftColor: PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium }}
       _hover={{
         boxShadow: 'md',
         borderColor: 'blue.300',

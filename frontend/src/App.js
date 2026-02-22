@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from './components/ui/toaster';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import Layout from './components/common/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -22,7 +23,9 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Layout>
+                  <Dashboard />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -30,7 +33,9 @@ function App() {
             path="/workspaces"
             element={
               <ProtectedRoute>
-                <Workspaces />
+                <Layout>
+                  <Workspaces />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -38,7 +43,9 @@ function App() {
             path="/workspaces/:id"
             element={
               <ProtectedRoute>
-                <WorkspaceDetail />
+                <Layout>
+                  <WorkspaceDetail />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -46,7 +53,9 @@ function App() {
             path="/projects/:id"
             element={
               <ProtectedRoute>
-                <ProjectDetail />
+                <Layout>
+                  <ProjectDetail />
+                </Layout>
               </ProtectedRoute>
             }
           />

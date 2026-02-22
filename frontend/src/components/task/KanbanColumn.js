@@ -5,10 +5,10 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import SortableTaskCard from './SortableTaskCard';
 
 const COLUMN_CONFIG = {
-  todo: { title: 'To Do', icon: '📝', color: 'gray.500' },
-  in_progress: { title: 'In Progress', icon: '🔄', color: 'blue.500' },
-  in_review: { title: 'In Review', icon: '👀', color: 'purple.500' },
-  done: { title: 'Done', icon: '✅', color: 'green.500' },
+  todo: { title: 'To Do', icon: '📝', color: 'gray.500', borderColor: '#93c5fd' },
+  in_progress: { title: 'In Progress', icon: '🔄', color: 'blue.500', borderColor: '#facc15' },
+  in_review: { title: 'In Review', icon: '👀', color: 'purple.500', borderColor: '#fb923c' },
+  done: { title: 'Done', icon: '✅', color: 'green.500', borderColor: '#4ade80' },
 };
 
 const KanbanColumn = ({ status, tasks, onTaskClick }) => {
@@ -22,8 +22,10 @@ const KanbanColumn = ({ status, tasks, onTaskClick }) => {
         p={4}
         borderRadius="lg"
         minH="600px"
-        border="2px solid"
+        border="1px solid"
         borderColor="gray.200"
+        borderTop="4px solid"
+        style={{ borderTopColor: config.borderColor }}
       >
         {/* Column Header */}
         <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">

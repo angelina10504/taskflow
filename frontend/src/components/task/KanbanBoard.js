@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, Spinner, Center } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import {
   DndContext,
   DragOverlay,
@@ -8,10 +8,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import TaskCard from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
+import TaskDetailModal from './TaskDetailModal';
 import * as taskService from '../../services/taskService';
 import { toaster } from '../ui/toaster';
 
@@ -21,6 +21,8 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
   const [tasks, setTasks] = useState(initialTasks || []);
   const [activeTask, setActiveTask] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -30,7 +32,6 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
     })
   );
 
-  // Group tasks by status
   const groupedTasks = COLUMNS.reduce((acc, status) => {
     acc[status] = tasks.filter((task) => task.status === status);
     return acc;
@@ -44,23 +45,21 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    
+
     setActiveTask(null);
 
     if (!over) return;
 
-    const activeTask = tasks.find((t) => t._id === active.id);
+    const draggedTask = tasks.find((t) => t._id === active.id);
     const overStatus = over.id;
 
-    // If dropped on a column (status)
     if (COLUMNS.includes(overStatus)) {
-      if (activeTask.status !== overStatus) {
-        // Update task status
+      if (draggedTask.status !== overStatus) {
         try {
-          await taskService.updateTaskStatus(activeTask._id, overStatus, 0);
-          
+          await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
+
           const updatedTasks = tasks.map((task) =>
-            task._id === activeTask._id ? { ...task, status: overStatus } : task
+            task._id === draggedTask._id ? { ...task, status: overStatus } : task
           );
           setTasks(updatedTasks);
           onTasksUpdate?.(updatedTasks);
@@ -89,7 +88,7 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
       const newTasks = [data.task, ...tasks];
       setTasks(newTasks);
       onTasksUpdate?.(newTasks);
-      
+
       toaster.create({
         title: 'Success',
         description: 'Task created successfully',
@@ -107,8 +106,23 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
   };
 
   const handleTaskClick = (task) => {
-    // TODO: Open task detail modal
-    console.log('Task clicked:', task);
+    setSelectedTask(task);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleTaskUpdate = (updatedTask) => {
+    const updatedTasks = tasks.map((t) =>
+      t._id === updatedTask._id ? updatedTask : t
+    );
+    setTasks(updatedTasks);
+    setSelectedTask(updatedTask);
+    onTasksUpdate?.(updatedTasks);
+  };
+
+  const handleTaskDelete = (taskId) => {
+    const updatedTasks = tasks.filter((t) => t._id !== taskId);
+    setTasks(updatedTasks);
+    onTasksUpdate?.(updatedTasks);
   };
 
   return (
@@ -147,6 +161,14 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
         onCreate={handleCreateTask}
         projectId={projectId}
         workspaceId={workspaceId}
+      />
+
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        onUpdate={handleTaskUpdate}
+        onDelete={handleTaskDelete}
       />
     </Box>
   );
