@@ -3,6 +3,9 @@ const {
   generateAccessToken,
   generateRefreshToken,
 } = require('../utils/generateToken');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -176,9 +179,72 @@ const refreshToken = async (req, res) => {
   }
 };
 
+// @desc    Google OAuth login/register
+// @route   POST /api/auth/google
+// @access  Public
+const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential is required',
+      });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        avatar: picture,
+        isEmailVerified: true,
+      });
+    } else if (!user.googleId) {
+      user.googleId = googleId;
+      user.avatar = picture;
+      await user.save();
+    }
+
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Google login successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
   refreshToken,
+  googleAuth,
 };

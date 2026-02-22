@@ -50,6 +50,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Google login function
+  const googleLogin = async (credential) => {
+    try {
+      const response = await authService.googleLogin(credential);
+      setUser(response.user);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   // Logout function - removed navigate, let components handle it
   const logout = () => {
     authService.logout();
@@ -67,6 +78,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     register,
     login,
+    googleLogin,
     logout,
     updateUser,
     isAuthenticated: !!user,

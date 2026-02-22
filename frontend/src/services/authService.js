@@ -36,6 +36,23 @@ export const login = async (credentials) => {
   }
 };
 
+// Google OAuth login
+export const googleLogin = async (credential) => {
+  try {
+    const response = await api.post('/api/auth/google', { credential });
+
+    if (response.data.accessToken) {
+      localStorage.setItem('accessToken', response.data.accessToken);
+      localStorage.setItem('refreshToken', response.data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Google login failed' };
+  }
+};
+
 // Logout user
 export const logout = () => {
   localStorage.removeItem('accessToken');

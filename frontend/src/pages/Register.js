@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Input, Heading, Text } from '@chakra-ui/react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
@@ -15,7 +16,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -55,6 +56,15 @@ const Register = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      await googleLogin(credentialResponse.credential);
+      navigate('/workspaces');
+    } catch (error) {
+      setErrors({ submit: error.message || 'Google login failed' });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -249,6 +259,19 @@ const Register = () => {
             {isLoading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </form>
+
+        <Box display="flex" alignItems="center" my={6}>
+          <Box flex="1" h="1px" bg="gray.200" />
+          <Text px={4} color="gray.500" fontSize="sm">or</Text>
+          <Box flex="1" h="1px" bg="gray.200" />
+        </Box>
+
+        <Box display="flex" justifyContent="center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setErrors({ submit: 'Google login failed' })}
+          />
+        </Box>
 
         <Text textAlign="center" mt={6} color="gray.600">
           Already have an account?{' '}

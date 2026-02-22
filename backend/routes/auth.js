@@ -4,6 +4,7 @@ const {
   login,
   getMe,
   refreshToken,
+  googleAuth,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -12,6 +13,7 @@ const router = express.Router();
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google', googleAuth);
 router.post('/refresh-token', refreshToken);
 
 // Private routes (require authentication)
