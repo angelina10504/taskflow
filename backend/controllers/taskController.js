@@ -393,6 +393,34 @@ const deleteTask = async (req, res) => {
   }
 };
 
+// @desc    Get all tasks assigned to or created by the current user (cross-workspace)
+// @route   GET /api/tasks/mine
+// @access  Private
+const getMyTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find({
+      status: { $ne: 'done' },
+      $or: [{ assignedTo: req.user.id }, { createdBy: req.user.id }],
+    })
+      .populate('project', 'name color icon')
+      .populate('workspace', 'name')
+      .sort({ dueDate: 1, priority: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    console.error('Get my tasks error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getTasks,
   getTask,
@@ -401,4 +429,5 @@ module.exports = {
   updateTaskStatus,
   reorderTasks,
   deleteTask,
+  getMyTasks,
 };

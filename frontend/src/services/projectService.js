@@ -1,5 +1,15 @@
 import api from './api';
 
+// Get all active projects across all workspaces the user belongs to
+export const getMyProjects = async () => {
+  try {
+    const response = await api.get('/api/projects/mine');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch your projects' };
+  }
+};
+
 // Get all projects in a workspace
 export const getProjects = async (workspaceId) => {
   try {

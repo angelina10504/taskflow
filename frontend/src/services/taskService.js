@@ -1,5 +1,15 @@
 import api from './api';
 
+// Get all open tasks assigned to or created by the current user (cross-workspace)
+export const getMyTasks = async () => {
+  try {
+    const response = await api.get('/api/tasks/mine');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch your tasks' };
+  }
+};
+
 // Get all tasks in a project
 export const getTasks = async (projectId) => {
   try {

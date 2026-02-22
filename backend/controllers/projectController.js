@@ -307,6 +307,36 @@ const toggleArchiveProject = async (req, res) => {
   }
 };
 
+// @desc    Get all active projects across all workspaces the user belongs to
+// @route   GET /api/projects/mine
+// @access  Private
+const getMyProjects = async (req, res) => {
+  try {
+    const workspaces = await Workspace.find({ 'members.user': req.user.id }, '_id');
+    const workspaceIds = workspaces.map((w) => w._id);
+
+    const projects = await Project.find({
+      workspace: { $in: workspaceIds },
+      status: 'active',
+    })
+      .populate('workspace', 'name')
+      .sort('-createdAt');
+
+    res.status(200).json({
+      success: true,
+      count: projects.length,
+      projects,
+    });
+  } catch (error) {
+    console.error('Get my projects error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProjects,
   getProject,
@@ -314,4 +344,5 @@ module.exports = {
   updateProject,
   deleteProject,
   toggleArchiveProject,
+  getMyProjects,
 };
