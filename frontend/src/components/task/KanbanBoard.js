@@ -142,42 +142,51 @@ const KanbanBoard = ({
     if (!over) return;
 
     const draggedTask = tasks.find((t) => t._id === active.id);
-    const overStatus = over.id;
 
-    if (COLUMNS.includes(overStatus) && draggedTask.status !== overStatus) {
-      try {
-        const response = await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
-        const updatedTask = response.task;
+    // over.id is either a column status (dropped on empty column / droppable area)
+    // or a task _id (dropped on top of another card) — resolve to column status either way
+    let overStatus;
+    if (COLUMNS.includes(over.id)) {
+      overStatus = over.id;
+    } else {
+      const overTask = tasks.find((t) => t._id === over.id);
+      overStatus = overTask?.status;
+    }
 
-        const updatedTasks = tasks.map((t) =>
-          t._id === draggedTask._id ? updatedTask : t
-        );
-        setTasks(updatedTasks);
-        onTasksUpdate?.(updatedTasks);
+    if (!overStatus || draggedTask.status === overStatus) return;
 
-        // Broadcast to teammates
-        if (socket && currentUser) {
-          socket.emit('task-moved', {
-            projectId,
-            task: updatedTask,
-            movedBy: { id: currentUser.id, name: currentUser.name },
-          });
-        }
+    try {
+      const response = await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
+      const updatedTask = response.task;
 
-        toaster.create({
-          title: 'Task moved',
-          description: `Task moved to ${STATUS_LABELS[overStatus]}`,
-          type: 'success',
-          duration: 2000,
-        });
-      } catch (error) {
-        toaster.create({
-          title: 'Error',
-          description: 'Failed to move task',
-          type: 'error',
-          duration: 3000,
+      const updatedTasks = tasks.map((t) =>
+        t._id === draggedTask._id ? updatedTask : t
+      );
+      setTasks(updatedTasks);
+      onTasksUpdate?.(updatedTasks);
+
+      // Broadcast to teammates
+      if (socket && currentUser) {
+        socket.emit('task-moved', {
+          projectId,
+          task: updatedTask,
+          movedBy: { id: currentUser.id, name: currentUser.name },
         });
       }
+
+      toaster.create({
+        title: 'Task moved',
+        description: `Task moved to ${STATUS_LABELS[overStatus]}`,
+        type: 'success',
+        duration: 2000,
+      });
+    } catch (error) {
+      toaster.create({
+        title: 'Error',
+        description: 'Failed to move task',
+        type: 'error',
+        duration: 3000,
+      });
     }
   };
 
