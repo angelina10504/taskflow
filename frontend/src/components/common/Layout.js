@@ -100,7 +100,19 @@ const Layout = ({ children }) => {
 
         {/* User Section */}
         <Box px={3} py={4} borderTop="1px solid" borderColor="gray.100">
-          <Box display="flex" alignItems="center" gap={3} px={3} py={2} mb={1}>
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={3}
+            px={3}
+            py={2}
+            mb={1}
+            borderRadius="md"
+            cursor="pointer"
+            transition="all 0.15s"
+            _hover={{ bg: 'gray.50' }}
+            onClick={() => navigate('/profile')}
+          >
             <Box
               w="32px"
               h="32px"
@@ -112,9 +124,29 @@ const Layout = ({ children }) => {
               fontWeight="bold"
               fontSize="xs"
               flexShrink={0}
-              style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+              overflow="hidden"
+              style={
+                user?.avatar && !user.avatar.includes('ui-avatars.com')
+                  ? {}
+                  : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }
+              }
             >
-              {initials}
+              {user?.avatar && !user.avatar.includes('ui-avatars.com') ? (
+                <Box
+                  as="img"
+                  src={
+                    user.avatar.startsWith('/uploads/')
+                      ? `${process.env.REACT_APP_API_URL}${user.avatar}`
+                      : user.avatar
+                  }
+                  alt="avatar"
+                  w="100%"
+                  h="100%"
+                  style={{ objectFit: 'cover' }}
+                />
+              ) : (
+                initials
+              )}
             </Box>
             <Box flex={1} overflow="hidden">
               <Text fontSize="sm" fontWeight="medium" noOfLines={1}>

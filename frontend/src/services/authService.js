@@ -76,6 +76,36 @@ export const isAuthenticated = () => {
   return !!getAccessToken();
 };
 
+// Update profile
+export const updateProfile = async (data) => {
+  try {
+    const response = await api.put('/api/auth/me', data);
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Profile update failed' };
+  }
+};
+
+// Upload avatar
+export const uploadAvatar = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await api.post('/api/auth/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Avatar upload failed' };
+  }
+};
+
 // Refresh access token
 export const refreshAccessToken = async () => {
   try {

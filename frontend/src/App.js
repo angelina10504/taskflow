@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Workspaces from './pages/Workspaces';
 import WorkspaceDetail from './pages/WorkspaceDetail';
 import ProjectDetail from './pages/ProjectDetail';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -57,6 +58,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ProjectDetail />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
                 </Layout>
               </ProtectedRoute>
             }

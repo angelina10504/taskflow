@@ -37,6 +37,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       maxlength: [500, 'Bio cannot be more than 500 characters'],
     },
+    jobTitle: {
+      type: String,
+      maxlength: 100,
+    },
+    phone: {
+      type: String,
+      maxlength: 20,
+    },
     timezone: {
       type: String,
       default: 'UTC',

@@ -4,6 +4,8 @@ const {
   generateRefreshToken,
 } = require('../utils/generateToken');
 const { OAuth2Client } = require('google-auth-library');
+const path = require('path');
+const fs = require('fs');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -241,10 +243,95 @@ const googleAuth = async (req, res) => {
   }
 };
 
+// @desc    Update current user profile
+// @route   PUT /api/auth/me
+// @access  Private
+const updateMe = async (req, res) => {
+  try {
+    const { name, bio, jobTitle, phone, timezone } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, bio, jobTitle, phone, timezone },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+        jobTitle: user.jobTitle,
+        phone: user.phone,
+        timezone: user.timezone,
+      },
+    });
+  } catch (error) {
+    console.error('Update me error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Upload avatar
+// @route   POST /api/auth/me/avatar
+// @access  Private
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const avatarPath = `/uploads/avatars/${req.file.filename}`;
+
+    const user = await User.findById(req.user.id);
+
+    // Delete old avatar if it's a local upload
+    if (user.avatar && user.avatar.startsWith('/uploads/')) {
+      const oldPath = path.join(__dirname, '..', user.avatar);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    user.avatar = avatarPath;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+        jobTitle: user.jobTitle,
+        phone: user.phone,
+        timezone: user.timezone,
+      },
+    });
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
   refreshToken,
   googleAuth,
+  updateMe,
+  uploadAvatar,
 };
