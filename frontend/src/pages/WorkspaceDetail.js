@@ -17,41 +17,27 @@ import { useAuth } from '../context/AuthContext';
 import * as workspaceService from '../services/workspaceService';
 import InviteMemberModal from '../components/workspace/InviteMemberModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import useColors from '../hooks/useColors';
 
 const ROLE_STYLES = {
-  owner: { bg: 'yellow.100', color: 'yellow.700', label: 'Owner' },
-  admin: { bg: 'blue.100', color: 'blue.700', label: 'Admin' },
-  member: { bg: 'green.100', color: 'green.700', label: 'Member' },
-  viewer: { bg: 'gray.100', color: 'gray.600', label: 'Viewer' },
+  owner:  { bg: 'yellow.100', color: 'yellow.700', darkBg: '#3b2d00', darkColor: '#fcd34d', label: 'Owner' },
+  admin:  { bg: 'blue.100',   color: 'blue.700',   darkBg: '#1e3a5f', darkColor: '#93c5fd', label: 'Admin' },
+  member: { bg: 'green.100',  color: 'green.700',  darkBg: '#14532d', darkColor: '#86efac', label: 'Member' },
+  viewer: { bg: 'gray.100',   color: 'gray.600',   darkBg: '#1e2535', darkColor: '#94a3b8', label: 'Viewer' },
 };
 
 const MemberAvatar = ({ name, size = 'md' }) => {
-  const initials =
-    name
-      ?.split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'U';
-
+  const initials = name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
   const sizes = {
     sm: { w: '32px', h: '32px', fontSize: 'xs' },
     md: { w: '48px', h: '48px', fontSize: 'sm' },
   };
-
   return (
     <Box
-      w={sizes[size].w}
-      h={sizes[size].h}
-      borderRadius="full"
-      bg="purple.500"
-      color="white"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      fontWeight="bold"
-      fontSize={sizes[size].fontSize}
-      flexShrink={0}
+      w={sizes[size].w} h={sizes[size].h}
+      borderRadius="full" bg="purple.500" color="white"
+      display="flex" alignItems="center" justifyContent="center"
+      fontWeight="bold" fontSize={sizes[size].fontSize} flexShrink={0}
     >
       {initials}
     </Box>
@@ -62,6 +48,8 @@ const WorkspaceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { dark, panelBg, border, textPrimary, textSecondary } = useColors();
+
   const [workspace, setWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState([]);
@@ -72,9 +60,7 @@ const WorkspaceDetail = () => {
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
 
-  useEffect(() => {
-    fetchWorkspace();
-  }, [id]);
+  useEffect(() => { fetchWorkspace(); }, [id]);
 
   const fetchWorkspace = async () => {
     setIsLoading(true);
@@ -82,21 +68,14 @@ const WorkspaceDetail = () => {
       const data = await workspaceService.getWorkspace(id);
       setWorkspace(data.workspace);
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to load workspace',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to load workspace', type: 'error', duration: 5000 });
       navigate('/workspaces');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (workspace) fetchProjects();
-  }, [workspace]);
+  useEffect(() => { if (workspace) fetchProjects(); }, [workspace]);
 
   const fetchProjects = async () => {
     setProjectsLoading(true);
@@ -113,20 +92,10 @@ const WorkspaceDetail = () => {
   const handleLeaveWorkspace = async () => {
     try {
       await workspaceService.leaveWorkspace(id);
-      toaster.create({
-        title: 'Success',
-        description: 'You have left the workspace',
-        type: 'success',
-        duration: 3000,
-      });
+      toaster.create({ title: 'Success', description: 'You have left the workspace', type: 'success', duration: 3000 });
       navigate('/workspaces');
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to leave workspace',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to leave workspace', type: 'error', duration: 5000 });
     }
   };
 
@@ -135,19 +104,9 @@ const WorkspaceDetail = () => {
       const data = await projectService.createProject(projectData);
       setProjects([data.project, ...projects]);
       setIsCreateProjectModalOpen(false);
-      toaster.create({
-        title: 'Success',
-        description: 'Project created successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      toaster.create({ title: 'Success', description: 'Project created successfully', type: 'success', duration: 3000 });
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to create project',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to create project', type: 'error', duration: 5000 });
     }
   };
 
@@ -156,19 +115,9 @@ const WorkspaceDetail = () => {
     try {
       await projectService.deleteProject(projectToDelete);
       setProjects(projects.filter((p) => p._id !== projectToDelete));
-      toaster.create({
-        title: 'Success',
-        description: 'Project deleted successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      toaster.create({ title: 'Success', description: 'Project deleted successfully', type: 'success', duration: 3000 });
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to delete project',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to delete project', type: 'error', duration: 5000 });
     } finally {
       setProjectToDelete(null);
     }
@@ -177,20 +126,10 @@ const WorkspaceDetail = () => {
   const handleInviteMember = async (inviteData) => {
     try {
       const data = await workspaceService.inviteMember(id, inviteData);
-      toaster.create({
-        title: 'Success',
-        description: data.message,
-        type: 'success',
-        duration: 3000,
-      });
+      toaster.create({ title: 'Success', description: data.message, type: 'success', duration: 3000 });
       fetchWorkspace();
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to invite member',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to invite member', type: 'error', duration: 5000 });
     }
   };
 
@@ -198,20 +137,10 @@ const WorkspaceDetail = () => {
     if (!memberToRemove) return;
     try {
       await workspaceService.removeMember(id, memberToRemove);
-      toaster.create({
-        title: 'Success',
-        description: 'Member removed successfully',
-        type: 'success',
-        duration: 3000,
-      });
+      toaster.create({ title: 'Success', description: 'Member removed successfully', type: 'success', duration: 3000 });
       fetchWorkspace();
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to remove member',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to remove member', type: 'error', duration: 5000 });
     } finally {
       setMemberToRemove(null);
     }
@@ -222,169 +151,104 @@ const WorkspaceDetail = () => {
   const canManageMembers = isOwner || currentUserRole === 'admin';
 
   if (isLoading) {
-    return (
-      <Center h="100vh">
-        <Spinner size="xl" color="blue.500" />
-      </Center>
-    );
+    return <Center h="100vh"><Spinner size="xl" color="blue.500" /></Center>;
   }
-
   if (!workspace) return null;
 
   return (
     <Box py={8} px={8}>
-      {/* Breadcrumb */}
+      {/* Back */}
       <Box mb={6}>
-        <Button variant="ghost" onClick={() => navigate('/workspaces')} size="sm">
+        <Button variant="ghost" onClick={() => navigate('/workspaces')} size="sm" color={textSecondary}>
           ← Back to Workspaces
         </Button>
       </Box>
 
       {/* Workspace Header */}
-      <Box
-        bg="white"
-        p={6}
-        borderRadius="lg"
-        boxShadow="md"
-        mb={6}
-        display="flex"
-        justifyContent="space-between"
-        alignItems="start"
+      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" mb={6}
+        border="1px solid" borderColor={border}
+        display="flex" justifyContent="space-between" alignItems="start"
       >
         <Box flex={1}>
-          <Heading size="2xl" mb={2}>
-            {workspace.name}
-          </Heading>
+          <Heading size="2xl" mb={2} color={textPrimary}>{workspace.name}</Heading>
           {workspace.description && (
-            <Text color="gray.600" fontSize="lg">
-              {workspace.description}
-            </Text>
+            <Text color={textSecondary} fontSize="lg">{workspace.description}</Text>
           )}
           <Box mt={4} display="flex" gap={4} alignItems="center">
-            <Text fontSize="sm" color="gray.500">
-              👥 {workspace.members?.length}{' '}
-              {workspace.members?.length === 1 ? 'member' : 'members'}
+            <Text fontSize="sm" color={textSecondary}>
+              👥 {workspace.members?.length} {workspace.members?.length === 1 ? 'member' : 'members'}
             </Text>
             {isOwner && (
-              <Box
-                px={2}
-                py={0.5}
-                bg="yellow.100"
-                color="yellow.700"
-                borderRadius="md"
-                fontSize="xs"
-                fontWeight="semibold"
+              <Box px={2} py={0.5} bg={dark ? '#3b2d00' : 'yellow.100'} color={dark ? '#fcd34d' : 'yellow.700'}
+                borderRadius="md" fontSize="xs" fontWeight="semibold"
               >
                 Owner
               </Box>
             )}
           </Box>
         </Box>
-
         {!isOwner && (
-          <Button
-            colorScheme="red"
-            variant="outline"
-            onClick={() => setIsLeaveConfirmOpen(true)}
-          >
+          <Button colorScheme="red" variant="outline" onClick={() => setIsLeaveConfirmOpen(true)}>
             Leave Workspace
           </Button>
         )}
       </Box>
 
-      {/* Members Section */}
-      <Box bg="white" p={6} borderRadius="lg" boxShadow="md" mb={6}>
+      {/* Members */}
+      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" mb={6} border="1px solid" borderColor={border}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-          <Heading size="lg">Team Members</Heading>
+          <Heading size="lg" color={textPrimary}>Team Members</Heading>
           {canManageMembers && (
-            <Button colorScheme="blue" onClick={() => setIsInviteModalOpen(true)}>
-              + Invite Member
-            </Button>
+            <Button colorScheme="blue" onClick={() => setIsInviteModalOpen(true)}>+ Invite Member</Button>
           )}
         </Box>
 
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
           {workspace.members?.map((member) => {
-            const roleStyle = ROLE_STYLES[member.role] || ROLE_STYLES.member;
+            const rs = ROLE_STYLES[member.role] || ROLE_STYLES.member;
             return (
-              <Box
-                key={member._id}
-                p={4}
-                borderRadius="md"
-                border="1px solid"
-                borderColor="gray.200"
-                display="flex"
-                alignItems="center"
-                gap={3}
+              <Box key={member._id} p={4} borderRadius="md" border="1px solid" borderColor={border}
+                display="flex" alignItems="center" gap={3}
               >
                 <MemberAvatar name={member.user.name} size="md" />
                 <Box flex={1} overflow="hidden">
-                  <Text fontWeight="medium" noOfLines={1}>
-                    {member.user.name}
-                  </Text>
-                  <Text fontSize="sm" color="gray.500" noOfLines={1}>
-                    {member.user.email}
-                  </Text>
-                  <Box
-                    display="inline-block"
-                    mt={1}
-                    px={2}
-                    py={0.5}
-                    bg={roleStyle.bg}
-                    color={roleStyle.color}
-                    borderRadius="md"
-                    fontSize="xs"
-                    fontWeight="semibold"
+                  <Text fontWeight="medium" noOfLines={1} color={textPrimary}>{member.user.name}</Text>
+                  <Text fontSize="sm" color={textSecondary} noOfLines={1}>{member.user.email}</Text>
+                  <Box display="inline-block" mt={1} px={2} py={0.5}
+                    bg={dark ? rs.darkBg : rs.bg} color={dark ? rs.darkColor : rs.color}
+                    borderRadius="md" fontSize="xs" fontWeight="semibold"
                   >
-                    {roleStyle.label}
+                    {rs.label}
                   </Box>
                 </Box>
-                {canManageMembers &&
-                  member.role !== 'owner' &&
-                  member.user._id !== user?.id && (
-                    <Button
-                      size="sm"
-                      colorScheme="red"
-                      variant="ghost"
-                      flexShrink={0}
-                      onClick={() => setMemberToRemove(member.user._id)}
-                    >
-                      Remove
-                    </Button>
-                  )}
+                {canManageMembers && member.role !== 'owner' && member.user._id !== user?.id && (
+                  <Button size="sm" colorScheme="red" variant="ghost" flexShrink={0}
+                    onClick={() => setMemberToRemove(member.user._id)}
+                  >
+                    Remove
+                  </Button>
+                )}
               </Box>
             );
           })}
         </SimpleGrid>
       </Box>
 
-      {/* Projects Section */}
-      <Box bg="white" p={6} borderRadius="lg" boxShadow="md">
+      {/* Projects */}
+      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" border="1px solid" borderColor={border}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-          <Heading size="lg">Projects</Heading>
-          <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>
-            + New Project
-          </Button>
+          <Heading size="lg" color={textPrimary}>Projects</Heading>
+          <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>+ New Project</Button>
         </Box>
 
         {projectsLoading ? (
-          <Center py={10}>
-            <Spinner size="lg" color="blue.500" />
-          </Center>
+          <Center py={10}><Spinner size="lg" color="blue.500" /></Center>
         ) : projects.length === 0 ? (
           <Box textAlign="center" py={10}>
-            <Text fontSize="5xl" mb={3}>
-              📊
-            </Text>
-            <Heading size="md" mb={2}>
-              No projects yet
-            </Heading>
-            <Text color="gray.600" mb={4}>
-              Create your first project to get started
-            </Text>
-            <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>
-              Create Project
-            </Button>
+            <Text fontSize="5xl" mb={3}>📊</Text>
+            <Heading size="md" mb={2} color={textPrimary}>No projects yet</Heading>
+            <Text color={textSecondary} mb={4}>Create your first project to get started</Text>
+            <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>Create Project</Button>
           </Box>
         ) : (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
@@ -402,50 +266,11 @@ const WorkspaceDetail = () => {
       </Box>
 
       {/* Modals */}
-      <InviteMemberModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        onInvite={handleInviteMember}
-        workspaceId={id}
-      />
-
-      <CreateProjectModal
-        isOpen={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
-        onCreate={handleCreateProject}
-        workspaceId={id}
-      />
-
-      {/* Confirm Dialogs */}
-      <ConfirmDialog
-        isOpen={isLeaveConfirmOpen}
-        onClose={() => setIsLeaveConfirmOpen(false)}
-        onConfirm={handleLeaveWorkspace}
-        title="Leave Workspace"
-        message="Are you sure you want to leave this workspace? You will lose access to all its projects and tasks."
-        confirmLabel="Leave"
-        colorScheme="red"
-      />
-
-      <ConfirmDialog
-        isOpen={!!memberToRemove}
-        onClose={() => setMemberToRemove(null)}
-        onConfirm={handleRemoveMember}
-        title="Remove Member"
-        message="Are you sure you want to remove this member from the workspace?"
-        confirmLabel="Remove"
-        colorScheme="red"
-      />
-
-      <ConfirmDialog
-        isOpen={!!projectToDelete}
-        onClose={() => setProjectToDelete(null)}
-        onConfirm={handleDeleteProject}
-        title="Delete Project"
-        message="Are you sure you want to delete this project? All tasks inside will be permanently lost."
-        confirmLabel="Delete Project"
-        colorScheme="red"
-      />
+      <InviteMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onInvite={handleInviteMember} workspaceId={id} />
+      <CreateProjectModal isOpen={isCreateProjectModalOpen} onClose={() => setIsCreateProjectModalOpen(false)} onCreate={handleCreateProject} workspaceId={id} />
+      <ConfirmDialog isOpen={isLeaveConfirmOpen} onClose={() => setIsLeaveConfirmOpen(false)} onConfirm={handleLeaveWorkspace} title="Leave Workspace" message="Are you sure you want to leave this workspace? You will lose access to all its projects and tasks." confirmLabel="Leave" colorScheme="red" />
+      <ConfirmDialog isOpen={!!memberToRemove} onClose={() => setMemberToRemove(null)} onConfirm={handleRemoveMember} title="Remove Member" message="Are you sure you want to remove this member from the workspace?" confirmLabel="Remove" colorScheme="red" />
+      <ConfirmDialog isOpen={!!projectToDelete} onClose={() => setProjectToDelete(null)} onConfirm={handleDeleteProject} title="Delete Project" message="Are you sure you want to delete this project? All tasks inside will be permanently lost." confirmLabel="Delete Project" colorScheme="red" />
     </Box>
   );
 };

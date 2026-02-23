@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text, Heading } from '@chakra-ui/react';
+import useColors from '../../hooks/useColors';
 
 const PRIORITY_COLORS = {
   low: 'gray.500',
@@ -23,32 +24,30 @@ const PRIORITY_LABELS = {
 };
 
 const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
+  const { dark, cardBg, border, textSecondary, textMuted } = useColors();
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 
   return (
     <Box
-      bg="white"
+      bg={cardBg}
       p={4}
       borderRadius="md"
       boxShadow="sm"
       cursor="pointer"
       transition="all 0.2s"
       border="1px solid"
-      borderColor="gray.200"
+      borderColor={border}
       borderLeft="4px solid"
       style={{ borderLeftColor: PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium }}
-      _hover={{
-        boxShadow: 'md',
-        borderColor: 'blue.300',
-      }}
+      _hover={{ boxShadow: 'md' }}
       onClick={onClick}
     >
-      <Heading size="sm" mb={2} noOfLines={2}>
+      <Heading size="sm" mb={2} noOfLines={2} color={dark ? 'gray.100' : 'gray.800'}>
         {task.title}
       </Heading>
 
       {task.description && (
-        <Text fontSize="sm" color="gray.600" noOfLines={2} mb={2}>
+        <Text fontSize="sm" color={textSecondary} noOfLines={2} mb={2}>
           {task.description}
         </Text>
       )}
@@ -62,7 +61,7 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
             onClick={(e) => e.stopPropagation()}
             style={{
               fontSize: '12px',
-              color: '#3182ce',
+              color: '#818cf8',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
@@ -81,13 +80,10 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
       <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
         {/* Priority Badge */}
         <Box
-          px={2}
-          py={1}
-          bg={`${PRIORITY_COLORS[task.priority]}.50`}
+          px={2} py={1}
+          bg={dark ? '#1e2535' : `${PRIORITY_COLORS[task.priority]}.50`}
           color={PRIORITY_COLORS[task.priority]}
-          borderRadius="md"
-          fontSize="xs"
-          fontWeight="medium"
+          borderRadius="md" fontSize="xs" fontWeight="medium"
         >
           {PRIORITY_LABELS[task.priority]}
         </Box>
@@ -95,12 +91,10 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
         {/* Due Date */}
         {task.dueDate && (
           <Box
-            px={2}
-            py={1}
-            bg={isOverdue ? 'red.50' : 'gray.50'}
-            color={isOverdue ? 'red.600' : 'gray.600'}
-            borderRadius="md"
-            fontSize="xs"
+            px={2} py={1}
+            bg={isOverdue ? (dark ? '#3b1212' : 'red.50') : (dark ? '#1e2535' : 'gray.50')}
+            color={isOverdue ? 'red.400' : textSecondary}
+            borderRadius="md" fontSize="xs"
           >
             📅 {new Date(task.dueDate).toLocaleDateString()}
           </Box>
@@ -110,26 +104,14 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
         {task.assignedTo && task.assignedTo.length > 0 && (
           <Box display="flex" gap={1}>
             {task.assignedTo.slice(0, 3).map((user) => {
-              const initials = user.name
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2) || 'U';
-
+              const initials = user.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
               return (
                 <Box
                   key={user._id}
-                  w="24px"
-                  h="24px"
-                  borderRadius="full"
-                  bg="purple.500"
-                  color="white"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  fontSize="10px"
-                  fontWeight="bold"
+                  w="24px" h="24px" borderRadius="full"
+                  bg="purple.500" color="white"
+                  display="flex" alignItems="center" justifyContent="center"
+                  fontSize="10px" fontWeight="bold"
                 >
                   {initials}
                 </Box>
@@ -137,16 +119,11 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
             })}
             {task.assignedTo.length > 3 && (
               <Box
-                w="24px"
-                h="24px"
-                borderRadius="full"
-                bg="gray.300"
-                color="gray.700"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                fontSize="10px"
-                fontWeight="bold"
+                w="24px" h="24px" borderRadius="full"
+                bg={dark ? '#2a3244' : 'gray.300'}
+                color={dark ? 'gray.300' : 'gray.700'}
+                display="flex" alignItems="center" justifyContent="center"
+                fontSize="10px" fontWeight="bold"
               >
                 +{task.assignedTo.length - 3}
               </Box>
@@ -160,13 +137,10 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
         <Box display="flex" gap={1} mt={2} flexWrap="wrap">
           {task.labels.map((label, index) => (
             <Box
-              key={index}
-              px={2}
-              py={0.5}
-              bg="blue.100"
-              color="blue.700"
-              borderRadius="sm"
-              fontSize="xs"
+              key={index} px={2} py={0.5}
+              bg={dark ? '#1e3a5f' : 'blue.100'}
+              color={dark ? '#93c5fd' : 'blue.700'}
+              borderRadius="sm" fontSize="xs"
             >
               {label}
             </Box>
@@ -177,10 +151,8 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
       {/* Created date / creator */}
       {task.createdAt && (
         <Box display="flex" justifyContent="flex-end" mt={2}>
-          <Text fontSize="xs" color="gray.400">
-            {workspaceMemberCount > 1 && task.createdBy?.name
-              ? `${task.createdBy.name} · `
-              : ''}
+          <Text fontSize="xs" color={textMuted}>
+            {workspaceMemberCount > 1 && task.createdBy?.name ? `${task.createdBy.name} · ` : ''}
             {new Date(task.createdAt).toLocaleDateString()}
           </Text>
         </Box>

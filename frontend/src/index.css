@@ -16,3 +16,41 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* ── Dark mode overrides ───────────────────────────────────────────────────
+   Chakra UI v3 sets data-theme="dark" on <html> when dark mode is active.
+   These rules remap the most common explicit color values used across pages.
+   ───────────────────────────────────────────────────────────────────────── */
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* White card surfaces → dark surface */
+html[data-theme='dark'] [style*='background: white'],
+html[data-theme='dark'] [style*='background:white'],
+html[data-theme='dark'] [style*='background-color: white'],
+html[data-theme='dark'] [style*='background-color:white'] {
+  background: #1e2535 !important;
+}
+
+/* Gray-50 page backgrounds → deep dark */
+html[data-theme='dark'] [style*='background: var(--chakra-colors-gray-50)'],
+html[data-theme='dark'] [style*='--chakra-colors-gray-50'] {
+  background: #0f1624 !important;
+}
+
+/* Override Chakra's generated CSS variables for raw color tokens */
+html[data-theme='dark'] {
+  --chakra-colors-white: #1e2535;
+  --chakra-colors-gray-50: #0f1624;
+  --chakra-colors-gray-100: #1a2030;
+  --chakra-colors-gray-200: #2a3244;
+  --chakra-colors-gray-300: #3d4f6b;
+  --chakra-colors-gray-400: #6b7fa3;
+  --chakra-colors-gray-500: #8ba0c4;
+  --chakra-colors-gray-600: #a8bbda;
+  --chakra-colors-gray-700: #c8d5ea;
+  --chakra-colors-gray-800: #dde6f5;
+  --chakra-colors-gray-900: #eef2fb;
+}

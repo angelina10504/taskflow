@@ -2,43 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import KanbanBoard from '../components/task/KanbanBoard';
 import * as taskService from '../services/taskService';
-import {
-  Box,
-  Heading,
-  Text,
-  Spinner,
-  Center,
-} from '@chakra-ui/react';
+import { Box, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
 import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
+import useColors from '../hooks/useColors';
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { panelBg, border, textPrimary, textSecondary, textMuted } = useColors();
+
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
 
-  useEffect(() => {
-    fetchProject();
-  }, [id]);
+  useEffect(() => { fetchProject(); }, [id]);
 
-  // Join/leave socket room for this project
   useEffect(() => {
     if (!user) return;
-
     socket.emit('join-project', {
       projectId: id,
       user: { id: user.id, name: user.name, avatar: user.avatar || null },
     });
-
     socket.on('online-users', setOnlineUsers);
-
     return () => {
       socket.emit('leave-project', { projectId: id });
       socket.off('online-users', setOnlineUsers);
@@ -51,21 +42,14 @@ const ProjectDetail = () => {
       const data = await projectService.getProject(id);
       setProject(data.project);
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: error.message || 'Failed to load project',
-        type: 'error',
-        duration: 5000,
-      });
+      toaster.create({ title: 'Error', description: error.message || 'Failed to load project', type: 'error', duration: 5000 });
       navigate('/workspaces');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (project) fetchTasks();
-  }, [project]);
+  useEffect(() => { if (project) fetchTasks(); }, [project]);
 
   const fetchTasks = async () => {
     setTasksLoading(true);
@@ -79,95 +63,55 @@ const ProjectDetail = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Center h="100vh">
-        <Spinner size="xl" color="blue.500" />
-      </Center>
-    );
-  }
-
+  if (isLoading) return <Center h="100vh"><Spinner size="xl" color="blue.500" /></Center>;
   if (!project) return null;
 
   return (
     <Box py={8} px={8}>
       {/* Breadcrumb */}
-      <Box mb={6} display="flex" gap={2} alignItems="center" fontSize="sm" color="gray.500">
-        <Text
-          cursor="pointer"
-          _hover={{ color: 'blue.500' }}
-          onClick={() => navigate('/workspaces')}
-        >
+      <Box mb={6} display="flex" gap={2} alignItems="center" fontSize="sm" color={textMuted}>
+        <Text cursor="pointer" _hover={{ color: 'blue.400' }} onClick={() => navigate('/workspaces')}>
           Workspaces
         </Text>
         <Text>›</Text>
-        <Text
-          cursor="pointer"
-          _hover={{ color: 'blue.500' }}
-          onClick={() =>
-            navigate(`/workspaces/${project.workspace._id || project.workspace}`)
-          }
+        <Text cursor="pointer" _hover={{ color: 'blue.400' }}
+          onClick={() => navigate(`/workspaces/${project.workspace._id || project.workspace}`)}
         >
           {project.workspace.name || 'Workspace'}
         </Text>
         <Text>›</Text>
-        <Text fontWeight="medium" color="gray.800">
-          {project.name}
-        </Text>
+        <Text fontWeight="medium" color={textPrimary}>{project.name}</Text>
       </Box>
 
       {/* Project Header */}
-      <Box
-        bg="white"
-        p={6}
-        borderRadius="lg"
-        boxShadow="md"
-        mb={6}
-        borderLeft="4px solid"
-        borderLeftColor={project.color || 'blue.500'}
+      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" mb={6}
+        border="1px solid" borderColor={border}
+        borderLeft="4px solid" borderLeftColor={project.color || 'blue.500'}
       >
         <Box display="flex" alignItems="center" gap={3} mb={3}>
           <Text fontSize="4xl">{project.icon || '📊'}</Text>
-          <Heading size="2xl">{project.name}</Heading>
+          <Heading size="2xl" color={textPrimary}>{project.name}</Heading>
           {project.status === 'archived' && (
-            <Box
-              px={3}
-              py={1}
-              bg="orange.100"
-              color="orange.700"
-              borderRadius="md"
-              fontSize="sm"
-              fontWeight="medium"
-            >
+            <Box px={3} py={1} bg="orange.100" color="orange.700" borderRadius="md" fontSize="sm" fontWeight="medium">
               📦 Archived
             </Box>
           )}
         </Box>
-
         {project.description && (
-          <Text color="gray.600" fontSize="lg" mb={4}>
-            {project.description}
-          </Text>
+          <Text color={textSecondary} fontSize="lg" mb={4}>{project.description}</Text>
         )}
-
-        <Box display="flex" gap={6} fontSize="sm" color="gray.500">
-          {project.deadline && (
-            <Text>📅 Due: {new Date(project.deadline).toLocaleDateString()}</Text>
-          )}
+        <Box display="flex" gap={6} fontSize="sm" color={textMuted}>
+          {project.deadline && <Text>📅 Due: {new Date(project.deadline).toLocaleDateString()}</Text>}
           <Text>Created by {project.createdBy?.name || 'Unknown'}</Text>
           <Text>{new Date(project.createdAt).toLocaleDateString()}</Text>
         </Box>
       </Box>
 
       {/* Tasks / Kanban */}
-      <Box bg="white" p={6} borderRadius="lg" boxShadow="md">
-        <Heading size="lg" mb={6}>
-          Tasks
-        </Heading>
+      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" border="1px solid" borderColor={border}>
+        <Heading size="lg" mb={6} color={textPrimary}>Tasks</Heading>
         {tasksLoading ? (
-          <Center py={10}>
-            <Spinner size="lg" color="blue.500" />
-          </Center>
+          <Center py={10}><Spinner size="lg" color="blue.500" /></Center>
         ) : (
           <KanbanBoard
             projectId={id}

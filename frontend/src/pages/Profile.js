@@ -11,12 +11,13 @@ import {
 import { toaster } from '../components/ui/toaster';
 import { useAuth } from '../context/AuthContext';
 import * as authService from '../services/authService';
+import useColors from '../hooks/useColors';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
-const Field = ({ label, children }) => (
+const Field = ({ label, color, children }) => (
   <Box>
-    <Text fontSize="xs" fontWeight="medium" color="gray.500" mb={1} textTransform="uppercase" letterSpacing="wider">
+    <Text fontSize="xs" fontWeight="medium" color={color || 'gray.500'} mb={1} textTransform="uppercase" letterSpacing="wider">
       {label}
     </Text>
     {children}
@@ -25,6 +26,7 @@ const Field = ({ label, children }) => (
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const { dark, border, inputBg, textPrimary, textMuted } = useColors();
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -54,7 +56,9 @@ const Profile = () => {
       .slice(0, 2);
 
   const inputStyles = {
-    borderColor: 'gray.200',
+    borderColor: border,
+    bg: inputBg,
+    color: textPrimary,
     size: 'sm',
     borderRadius: 'md',
     _focus: { borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' },
@@ -131,7 +135,7 @@ const Profile = () => {
       <Box w="100%" maxW="500px" display="flex" flexDirection="column" gap={5}>
 
         {/* Title */}
-        <Heading size="md" textAlign="center" color="gray.800">
+        <Heading size="md" textAlign="center" color={textPrimary}>
           My Profile
         </Heading>
 
@@ -195,45 +199,45 @@ const Profile = () => {
             style={{ display: 'none' }}
             onChange={handleAvatarChange}
           />
-          <Text fontSize="xs" color="gray.400">Click to change photo</Text>
+          <Text fontSize="xs" color={textMuted}>Click to change photo</Text>
         </Box>
 
         {/* Email */}
-        <Field label="Email">
+        <Field label="Email" color={textMuted}>
           <Input
             value={user?.email || ''}
             isReadOnly
-            bg="gray.50"
-            color="gray.400"
-            borderColor="gray.200"
+            bg={dark ? '#151d2e' : 'gray.50'}
+            color={textMuted}
+            borderColor={border}
             size="sm"
             borderRadius="md"
-            _focus={{ boxShadow: 'none', borderColor: 'gray.200' }}
+            _focus={{ boxShadow: 'none', borderColor: border }}
           />
         </Field>
 
         {/* Name + Job Title */}
         <Box display="grid" gridTemplateColumns="1fr 1fr" gap={4}>
-          <Field label="Name">
+          <Field label="Name" color={textMuted}>
             <Input name="name" value={form.name} onChange={handleChange} placeholder="Your name" {...inputStyles} />
           </Field>
-          <Field label="Job Title">
+          <Field label="Job Title" color={textMuted}>
             <Input name="jobTitle" value={form.jobTitle} onChange={handleChange} placeholder="e.g. Engineer" {...inputStyles} />
           </Field>
         </Box>
 
         {/* Phone + Timezone */}
         <Box display="grid" gridTemplateColumns="1fr 1fr" gap={4}>
-          <Field label="Phone">
+          <Field label="Phone" color={textMuted}>
             <Input name="phone" value={form.phone} onChange={handleChange} placeholder="+1 555 000 0000" {...inputStyles} />
           </Field>
-          <Field label="Timezone">
+          <Field label="Timezone" color={textMuted}>
             <Input name="timezone" value={form.timezone} onChange={handleChange} placeholder="UTC" {...inputStyles} />
           </Field>
         </Box>
 
         {/* Bio */}
-        <Field label="Bio">
+        <Field label="Bio" color={textMuted}>
           <Textarea
             name="bio"
             value={form.bio}
@@ -242,7 +246,9 @@ const Profile = () => {
             rows={3}
             size="sm"
             borderRadius="md"
-            borderColor="gray.200"
+            bg={inputBg}
+            color={textPrimary}
+            borderColor={border}
             _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
           />
         </Field>
