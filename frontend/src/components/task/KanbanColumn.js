@@ -11,7 +11,7 @@ const COLUMN_CONFIG = {
   done: { title: 'Done', icon: '✅', color: 'green.500', borderColor: '#4ade80' },
 };
 
-const KanbanColumn = ({ status, tasks, onTaskClick }) => {
+const KanbanColumn = ({ status, tasks, onTaskClick, workspaceMemberCount }) => {
   const { setNodeRef } = useDroppable({ id: status });
   const config = COLUMN_CONFIG[status];
 
@@ -60,6 +60,7 @@ const KanbanColumn = ({ status, tasks, onTaskClick }) => {
                   key={task._id}
                   task={task}
                   onClick={() => onTaskClick(task)}
+                  workspaceMemberCount={workspaceMemberCount}
                 />
               ))}
             </Box>

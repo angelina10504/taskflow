@@ -17,7 +17,7 @@ import { toaster } from '../ui/toaster';
 
 const COLUMNS = ['todo', 'in_progress', 'in_review', 'done'];
 
-const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) => {
+const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, workspaceMemberCount }) => {
   const [tasks, setTasks] = useState(initialTasks || []);
   const [activeTask, setActiveTask] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -146,6 +146,7 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
               status={status}
               tasks={groupedTasks[status]}
               onTaskClick={handleTaskClick}
+              workspaceMemberCount={workspaceMemberCount}
             />
           ))}
         </Box>
@@ -169,6 +170,7 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate }) =>
         onClose={() => setIsDetailModalOpen(false)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
+        workspaceMemberCount={workspaceMemberCount}
       />
     </Box>
   );

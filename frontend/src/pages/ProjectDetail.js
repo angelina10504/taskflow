@@ -153,6 +153,7 @@ const ProjectDetail = () => {
             workspaceId={project.workspace._id || project.workspace}
             initialTasks={tasks}
             onTasksUpdate={setTasks}
+            workspaceMemberCount={project.workspace?.members?.length || 1}
           />
         )}
       </Box>

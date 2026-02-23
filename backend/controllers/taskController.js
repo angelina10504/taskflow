@@ -125,6 +125,7 @@ const createTask = async (req, res) => {
     const {
       title,
       description,
+      link,
       project: projectId,
       workspace: workspaceId,
       status,
@@ -163,6 +164,7 @@ const createTask = async (req, res) => {
     const task = await Task.create({
       title,
       description,
+      link,
       project: projectId,
       workspace: workspaceId,
       status: status || 'todo',
@@ -223,6 +225,7 @@ const updateTask = async (req, res) => {
     const {
       title,
       description,
+      link,
       status,
       priority,
       assignedTo,
@@ -233,6 +236,7 @@ const updateTask = async (req, res) => {
 
     task.title = title || task.title;
     task.description = description !== undefined ? description : task.description;
+    task.link = link !== undefined ? link : task.link;
     task.status = status || task.status;
     task.priority = priority || task.priority;
     task.assignedTo = assignedTo !== undefined ? assignedTo : task.assignedTo;

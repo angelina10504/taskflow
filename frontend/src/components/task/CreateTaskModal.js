@@ -5,6 +5,7 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    link: '',
     priority: 'medium',
     status: 'todo',
     dueDate: '',
@@ -43,6 +44,7 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
       setFormData({
         title: '',
         description: '',
+        link: '',
         priority: 'medium',
         status: 'todo',
         dueDate: '',
@@ -142,6 +144,18 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="What needs to be done?"
+              />
+            </Box>
+
+            <Box mb={4}>
+              <Text mb={2} fontWeight="medium" fontSize="sm">
+                Link (optional)
+              </Text>
+              <Input
+                name="link"
+                value={formData.link}
+                onChange={handleChange}
+                placeholder="https://..."
               />
             </Box>
 

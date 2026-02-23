@@ -22,7 +22,7 @@ const PRIORITY_LABELS = {
   urgent: 'Urgent',
 };
 
-const TaskCard = ({ task, onClick }) => {
+const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 
   return (
@@ -48,9 +48,34 @@ const TaskCard = ({ task, onClick }) => {
       </Heading>
 
       {task.description && (
-        <Text fontSize="sm" color="gray.600" noOfLines={2} mb={3}>
+        <Text fontSize="sm" color="gray.600" noOfLines={2} mb={2}>
           {task.description}
         </Text>
+      )}
+
+      {task.link && (
+        <Box mb={3}>
+          <a
+            href={task.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              fontSize: '12px',
+              color: '#3182ce',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textDecoration: 'none',
+            }}
+          >
+            🔗 {task.link}
+          </a>
+        </Box>
       )}
 
       <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
@@ -146,6 +171,18 @@ const TaskCard = ({ task, onClick }) => {
               {label}
             </Box>
           ))}
+        </Box>
+      )}
+
+      {/* Created date / creator */}
+      {task.createdAt && (
+        <Box display="flex" justifyContent="flex-end" mt={2}>
+          <Text fontSize="xs" color="gray.400">
+            {workspaceMemberCount > 1 && task.createdBy?.name
+              ? `${task.createdBy.name} · `
+              : ''}
+            {new Date(task.createdAt).toLocaleDateString()}
+          </Text>
         </Box>
       )}
     </Box>

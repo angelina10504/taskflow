@@ -34,7 +34,7 @@ const STATUS_LABELS = {
   done: 'Done',
 };
 
-const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete }) => {
+const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceMemberCount }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +45,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete }) => {
       setEditData({
         title: task.title,
         description: task.description || '',
+        link: task.link || '',
         priority: task.priority,
         status: task.status,
         dueDate: task.dueDate
@@ -240,6 +241,34 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete }) => {
               )}
             </Box>
 
+            {/* Link */}
+            <Box mb={4}>
+              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
+                Link
+              </Text>
+              {isEditing ? (
+                <Input
+                  value={editData.link}
+                  onChange={(e) =>
+                    setEditData((prev) => ({ ...prev, link: e.target.value }))
+                  }
+                  placeholder="https://..."
+                  size="sm"
+                />
+              ) : task.link ? (
+                <a
+                  href={task.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '14px', color: '#3182ce', wordBreak: 'break-all' }}
+                >
+                  {task.link}
+                </a>
+              ) : (
+                <Text fontSize="sm" color="gray.400">No link</Text>
+              )}
+            </Box>
+
             {/* Due Date */}
             <Box mb={4}>
               <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
@@ -355,8 +384,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete }) => {
             {/* Footer metadata */}
             <Box mt={6} pt={4} borderTop="1px solid" borderColor="gray.100">
               <Text fontSize="xs" color="gray.400">
-                Created {new Date(task.createdAt).toLocaleDateString()} by{' '}
-                {task.createdBy?.name || 'Unknown'}
+                Created {new Date(task.createdAt).toLocaleDateString()}
+                {workspaceMemberCount > 1 && task.createdBy?.name
+                  ? ` by ${task.createdBy.name}`
+                  : ''}
               </Text>
               {task.completedAt && (
                 <Text fontSize="xs" color="green.500" mt={1}>

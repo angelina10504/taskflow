@@ -12,6 +12,10 @@ const taskSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    link: {
+      type: String,
+      trim: true,
+    },
     project: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',

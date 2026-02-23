@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import TaskCard from './TaskCard';
 
-const SortableTaskCard = ({ task, onClick }) => {
+const SortableTaskCard = ({ task, onClick, workspaceMemberCount }) => {
   const {
     attributes,
     listeners,
@@ -21,7 +21,7 @@ const SortableTaskCard = ({ task, onClick }) => {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} onClick={onClick} />
+      <TaskCard task={task} onClick={onClick} workspaceMemberCount={workspaceMemberCount} />
     </div>
   );
 };
