@@ -62,6 +62,15 @@ const ProjectCard = ({ project, onClick, onDelete, canDelete }) => {
           </Button>
         )}
       </Box>
+
+      {project.createdAt && (
+        <Box display="flex" justifyContent="flex-end" mt={2}>
+          <Text fontSize="xs" color="gray.400">
+            {project.createdBy?.name ? `${project.createdBy.name} · ` : ''}
+            {new Date(project.createdAt).toLocaleDateString()}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

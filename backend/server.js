@@ -63,12 +63,56 @@ const io = new Server(httpServer, {
   }
 });
 
+// projectId -> Map(socketId -> { id, name, avatar })
+const projectRooms = new Map();
+
+const broadcastOnlineUsers = (projectId) => {
+  const room = projectRooms.get(projectId);
+  if (!room) return;
+  // Deduplicate by userId before broadcasting
+  const seen = new Set();
+  const users = [];
+  for (const u of room.values()) {
+    if (!seen.has(u.id)) { seen.add(u.id); users.push(u); }
+  }
+  io.to(projectId).emit('online-users', users);
+};
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('👤 User connected:', socket.id);
 
+  socket.on('join-project', ({ projectId, user }) => {
+    socket.join(projectId);
+    socket.data.projectId = projectId;
+    socket.data.user = user;
+    if (!projectRooms.has(projectId)) projectRooms.set(projectId, new Map());
+    projectRooms.get(projectId).set(socket.id, user);
+    broadcastOnlineUsers(projectId);
+  });
+
+  socket.on('leave-project', ({ projectId }) => {
+    socket.leave(projectId);
+    if (projectRooms.has(projectId)) {
+      projectRooms.get(projectId).delete(socket.id);
+      if (projectRooms.get(projectId).size === 0) projectRooms.delete(projectId);
+      else broadcastOnlineUsers(projectId);
+    }
+  });
+
+  // Relay task moves to everyone else in the room
+  socket.on('task-moved', ({ projectId, task, movedBy }) => {
+    socket.to(projectId).emit('task-moved', { task, movedBy });
+  });
+
   socket.on('disconnect', () => {
     console.log('👋 User disconnected:', socket.id);
+    const { projectId } = socket.data || {};
+    if (projectId && projectRooms.has(projectId)) {
+      projectRooms.get(projectId).delete(socket.id);
+      if (projectRooms.get(projectId).size === 0) projectRooms.delete(projectId);
+      else broadcastOnlineUsers(projectId);
+    }
   });
 });
 

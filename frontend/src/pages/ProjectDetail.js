@@ -11,18 +11,39 @@ import {
 } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
 import * as projectService from '../services/projectService';
+import { useAuth } from '../context/AuthContext';
+import socket from '../services/socketService';
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
     fetchProject();
   }, [id]);
+
+  // Join/leave socket room for this project
+  useEffect(() => {
+    if (!user) return;
+
+    socket.emit('join-project', {
+      projectId: id,
+      user: { id: user.id, name: user.name, avatar: user.avatar || null },
+    });
+
+    socket.on('online-users', setOnlineUsers);
+
+    return () => {
+      socket.emit('leave-project', { projectId: id });
+      socket.off('online-users', setOnlineUsers);
+    };
+  }, [id, user]);
 
   const fetchProject = async () => {
     setIsLoading(true);
@@ -154,6 +175,9 @@ const ProjectDetail = () => {
             initialTasks={tasks}
             onTasksUpdate={setTasks}
             workspaceMemberCount={project.workspace?.members?.length || 1}
+            socket={socket}
+            onlineUsers={onlineUsers}
+            currentUser={user}
           />
         )}
       </Box>

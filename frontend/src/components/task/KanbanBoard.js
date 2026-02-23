@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Button } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, Button, Text } from '@chakra-ui/react';
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +17,83 @@ import { toaster } from '../ui/toaster';
 
 const COLUMNS = ['todo', 'in_progress', 'in_review', 'done'];
 
-const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, workspaceMemberCount }) => {
+const STATUS_LABELS = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  in_review: 'In Review',
+  done: 'Done',
+};
+
+const API_URL = process.env.REACT_APP_API_URL || '';
+
+const UserAvatar = ({ user, index }) => {
+  const initials = user.name
+    ?.split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?';
+
+  const avatarSrc =
+    user.avatar && !user.avatar.includes('ui-avatars.com')
+      ? user.avatar.startsWith('/uploads/')
+        ? `${API_URL}${user.avatar}`
+        : user.avatar
+      : null;
+
+  return (
+    <Box
+      position="relative"
+      ml={index > 0 ? '-8px' : 0}
+      style={{ zIndex: 10 - index }}
+      title={user.name}
+    >
+      <Box
+        w="28px"
+        h="28px"
+        borderRadius="full"
+        border="2px solid white"
+        overflow="hidden"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        fontSize="9px"
+        fontWeight="bold"
+        color="white"
+        flexShrink={0}
+        style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+      >
+        {avatarSrc ? (
+          <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
+        ) : (
+          initials
+        )}
+      </Box>
+      {/* Green online dot */}
+      <Box
+        position="absolute"
+        bottom="0"
+        right="0"
+        w="8px"
+        h="8px"
+        bg="#22c55e"
+        borderRadius="full"
+        border="1.5px solid white"
+      />
+    </Box>
+  );
+};
+
+const KanbanBoard = ({
+  projectId,
+  workspaceId,
+  initialTasks,
+  onTasksUpdate,
+  workspaceMemberCount,
+  socket,
+  onlineUsers = [],
+  currentUser,
+}) => {
   const [tasks, setTasks] = useState(initialTasks || []);
   const [activeTask, setActiveTask] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -26,11 +102,29 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, work
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
+
+  // Listen for remote task moves
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRemoteMove = ({ task, movedBy }) => {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === task._id ? task : t))
+      );
+      toaster.create({
+        title: `${movedBy.name} moved a task`,
+        description: `"${task.title}" → ${STATUS_LABELS[task.status] || task.status}`,
+        type: 'info',
+        duration: 3000,
+      });
+    };
+
+    socket.on('task-moved', handleRemoteMove);
+    return () => socket.off('task-moved', handleRemoteMove);
+  }, [socket]);
 
   const groupedTasks = COLUMNS.reduce((acc, status) => {
     acc[status] = tasks.filter((task) => task.status === status);
@@ -38,46 +132,51 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, work
   }, {});
 
   const handleDragStart = (event) => {
-    const { active } = event;
-    const task = tasks.find((t) => t._id === active.id);
+    const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task);
   };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-
     setActiveTask(null);
-
     if (!over) return;
 
     const draggedTask = tasks.find((t) => t._id === active.id);
     const overStatus = over.id;
 
-    if (COLUMNS.includes(overStatus)) {
-      if (draggedTask.status !== overStatus) {
-        try {
-          await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
+    if (COLUMNS.includes(overStatus) && draggedTask.status !== overStatus) {
+      try {
+        const response = await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
+        const updatedTask = response.task;
 
-          const updatedTasks = tasks.map((task) =>
-            task._id === draggedTask._id ? { ...task, status: overStatus } : task
-          );
-          setTasks(updatedTasks);
-          onTasksUpdate?.(updatedTasks);
+        const updatedTasks = tasks.map((t) =>
+          t._id === draggedTask._id ? updatedTask : t
+        );
+        setTasks(updatedTasks);
+        onTasksUpdate?.(updatedTasks);
 
-          toaster.create({
-            title: 'Task moved',
-            description: `Task moved to ${overStatus.replace('_', ' ')}`,
-            type: 'success',
-            duration: 2000,
-          });
-        } catch (error) {
-          toaster.create({
-            title: 'Error',
-            description: 'Failed to move task',
-            type: 'error',
-            duration: 3000,
+        // Broadcast to teammates
+        if (socket && currentUser) {
+          socket.emit('task-moved', {
+            projectId,
+            task: updatedTask,
+            movedBy: { id: currentUser.id, name: currentUser.name },
           });
         }
+
+        toaster.create({
+          title: 'Task moved',
+          description: `Task moved to ${STATUS_LABELS[overStatus]}`,
+          type: 'success',
+          duration: 2000,
+        });
+      } catch (error) {
+        toaster.create({
+          title: 'Error',
+          description: 'Failed to move task',
+          type: 'error',
+          duration: 3000,
+        });
       }
     }
   };
@@ -88,7 +187,6 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, work
       const newTasks = [data.task, ...tasks];
       setTasks(newTasks);
       onTasksUpdate?.(newTasks);
-
       toaster.create({
         title: 'Success',
         description: 'Task created successfully',
@@ -125,9 +223,53 @@ const KanbanBoard = ({ projectId, workspaceId, initialTasks, onTasksUpdate, work
     onTasksUpdate?.(updatedTasks);
   };
 
+  // Deduplicate online users by id
+  const uniqueOnlineUsers = onlineUsers.filter(
+    (u, i, arr) => arr.findIndex((x) => x.id === u.id) === i
+  );
+  const visibleUsers = uniqueOnlineUsers.slice(0, 6);
+  const overflow = uniqueOnlineUsers.length - visibleUsers.length;
+
   return (
     <Box>
-      <Box mb={4} display="flex" justifyContent="flex-end">
+      {/* Toolbar: online users + new task button */}
+      <Box mb={4} display="flex" alignItems="center" justifyContent="space-between">
+
+        {/* Online users */}
+        {uniqueOnlineUsers.length > 0 ? (
+          <Box display="flex" alignItems="center" gap={2}>
+            <Box display="flex" alignItems="center">
+              {visibleUsers.map((u, i) => (
+                <UserAvatar key={u.id} user={u} index={i} />
+              ))}
+              {overflow > 0 && (
+                <Box
+                  ml="-8px"
+                  w="28px"
+                  h="28px"
+                  borderRadius="full"
+                  border="2px solid white"
+                  bg="gray.200"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize="9px"
+                  fontWeight="bold"
+                  color="gray.600"
+                  style={{ zIndex: 0 }}
+                >
+                  +{overflow}
+                </Box>
+              )}
+            </Box>
+            <Text fontSize="xs" color="gray.500">
+              {uniqueOnlineUsers.length} online
+            </Text>
+          </Box>
+        ) : (
+          <Box />
+        )}
+
         <Button colorScheme="blue" onClick={() => setIsCreateModalOpen(true)}>
           + New Task
         </Button>
