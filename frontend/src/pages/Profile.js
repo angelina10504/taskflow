@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Heading,
@@ -46,6 +46,17 @@ const Profile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Keep avatarPreview in sync with user.avatar (handles save & async user load)
+  useEffect(() => {
+    if (!user?.avatar) return;
+    setAvatarPreview(
+      user.avatar.startsWith('/uploads/')
+        ? `${API_URL}${user.avatar}`
+        : user.avatar
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.avatar]);
 
   const initials =
     (form.name || user?.name || 'U')

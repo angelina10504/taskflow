@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Button, Input, Heading, Text, Field } from '@chakra-ui/react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import useColors from '../hooks/useColors';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ const Login = () => {
   
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
+  const { dark, pageBg, cardBg, inputBg, border, textPrimary, textSecondary } = useColors();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,25 +76,28 @@ const Login = () => {
   };
 
   return (
-    <Box 
-      minH="100vh" 
-      display="flex" 
-      alignItems="center" 
+    <Box
+      minH="100vh"
+      display="flex"
+      alignItems="center"
       justifyContent="center"
-      bg="gray.50"
+      bg={pageBg}
       p={4}
+      transition="background 0.2s"
     >
-      <Box 
-        maxW="md" 
-        w="full" 
-        bg="white" 
-        p={8} 
-        borderRadius="lg" 
+      <Box
+        maxW="md"
+        w="full"
+        bg={cardBg}
+        p={8}
+        borderRadius="lg"
         boxShadow="lg"
+        border="1px solid"
+        borderColor={border}
       >
-        <Heading 
-          size="2xl" 
-          mb={2} 
+        <Heading
+          size="2xl"
+          mb={2}
           textAlign="center"
           style={{
             background: 'linear-gradient(to right, #6366f1, #a855f7)',
@@ -102,16 +107,16 @@ const Login = () => {
         >
           Welcome Back
         </Heading>
-        <Text color="gray.600" textAlign="center" mb={6}>
+        <Text color={textSecondary} textAlign="center" mb={6}>
           Sign in to continue to TaskFlow
         </Text>
 
         {errors.submit && (
-          <Box 
-            bg="red.50" 
-            color="red.600" 
-            p={3} 
-            borderRadius="md" 
+          <Box
+            bg={dark ? '#3d1f1f' : 'red.50'}
+            color="red.400"
+            p={3}
+            borderRadius="md"
             mb={4}
             fontSize="sm"
           >
@@ -121,7 +126,7 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <Box mb={4}>
-            <Text mb={2} fontWeight="medium" fontSize="sm">
+            <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
               Email
             </Text>
             <Input
@@ -130,17 +135,20 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              borderColor={errors.email ? 'red.500' : 'gray.200'}
+              bg={inputBg}
+              color={textPrimary}
+              borderColor={errors.email ? 'red.500' : border}
+              _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
             />
             {errors.email && (
-              <Text color="red.500" fontSize="sm" mt={1}>
+              <Text color="red.400" fontSize="sm" mt={1}>
                 {errors.email}
               </Text>
             )}
           </Box>
 
           <Box mb={4}>
-            <Text mb={2} fontWeight="medium" fontSize="sm">
+            <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
               Password
             </Text>
             <Box position="relative">
@@ -150,7 +158,10 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter your password"
-                borderColor={errors.password ? 'red.500' : 'gray.200'}
+                bg={inputBg}
+                color={textPrimary}
+                borderColor={errors.password ? 'red.500' : border}
+                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
                 pr="12"
               />
               <Box
@@ -166,19 +177,19 @@ const Login = () => {
               </Box>
             </Box>
             {errors.password && (
-              <Text color="red.500" fontSize="sm" mt={1}>
+              <Text color="red.400" fontSize="sm" mt={1}>
                 {errors.password}
               </Text>
             )}
           </Box>
 
-          <Box 
-            display="flex" 
-            justifyContent="flex-end" 
+          <Box
+            display="flex"
+            justifyContent="flex-end"
             mb={6}
           >
             <Text
-              color="blue.500"
+              color="purple.400"
               fontSize="sm"
               fontWeight="medium"
               cursor="pointer"
@@ -190,18 +201,20 @@ const Login = () => {
           <Button
             type="submit"
             w="full"
-            colorScheme="blue"
             size="lg"
             disabled={isLoading}
+            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            color="white"
+            _hover={{ opacity: 0.9 }}
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
 
         <Box display="flex" alignItems="center" my={6}>
-          <Box flex="1" h="1px" bg="gray.200" />
-          <Text px={4} color="gray.500" fontSize="sm">or</Text>
-          <Box flex="1" h="1px" bg="gray.200" />
+          <Box flex="1" h="1px" bg={border} />
+          <Text px={4} color={textSecondary} fontSize="sm">or</Text>
+          <Box flex="1" h="1px" bg={border} />
         </Box>
 
         <Box display="flex" justifyContent="center">
@@ -211,11 +224,11 @@ const Login = () => {
           />
         </Box>
 
-        <Text textAlign="center" mt={6} color="gray.600">
+        <Text textAlign="center" mt={6} color={textSecondary}>
           Don't have an account?{' '}
           <Text
             as="span"
-            color="blue.500"
+            color="purple.400"
             fontWeight="medium"
             cursor="pointer"
             onClick={() => navigate('/register')}
