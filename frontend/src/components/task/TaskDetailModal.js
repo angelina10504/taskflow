@@ -14,6 +14,8 @@ import { toaster } from '../ui/toaster';
 import ConfirmDialog from '../common/ConfirmDialog';
 import useColors from '../../hooks/useColors';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const STATUS_LABELS = {
   todo: 'To Do',
   in_progress: 'In Progress',
@@ -285,6 +287,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                 <Box display="flex" gap={2} flexWrap="wrap">
                   {task.assignedTo.map((u) => {
                     const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+                    const hasRealAvatar = u.avatar && !u.avatar.includes('ui-avatars.com');
+                    const avatarSrc = hasRealAvatar
+                      ? u.avatar.startsWith('/uploads/') ? `${API_URL}${u.avatar}` : u.avatar
+                      : null;
                     return (
                       <Box
                         key={u._id}
@@ -294,12 +300,14 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                         borderRadius="full" pl={1} pr={3} py={1}
                       >
                         <Box
-                          w="24px" h="24px" borderRadius="full"
+                          w="24px" h="24px" borderRadius="full" overflow="hidden"
                           display="flex" alignItems="center" justifyContent="center"
                           fontSize="10px" fontWeight="bold" color="white"
-                          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                          style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
                         >
-                          {initials}
+                          {avatarSrc
+                            ? <Box as="img" src={avatarSrc} alt={u.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
+                            : initials}
                         </Box>
                         <Text fontSize="sm" color={textPrimary}>{u.name}</Text>
                       </Box>

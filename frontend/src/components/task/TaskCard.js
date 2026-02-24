@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Text, Heading } from '@chakra-ui/react';
 import useColors from '../../hooks/useColors';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const PRIORITY_COLORS = {
   low: 'gray.500',
   medium: 'blue.500',
@@ -105,15 +107,21 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
           <Box display="flex" gap={1}>
             {task.assignedTo.slice(0, 3).map((user) => {
               const initials = user.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+              const hasRealAvatar = user.avatar && !user.avatar.includes('ui-avatars.com');
+              const avatarSrc = hasRealAvatar
+                ? user.avatar.startsWith('/uploads/') ? `${API_URL}${user.avatar}` : user.avatar
+                : null;
               return (
                 <Box
                   key={user._id}
-                  w="24px" h="24px" borderRadius="full"
-                  bg="purple.500" color="white"
+                  w="24px" h="24px" borderRadius="full" overflow="hidden"
                   display="flex" alignItems="center" justifyContent="center"
-                  fontSize="10px" fontWeight="bold"
+                  fontSize="10px" fontWeight="bold" color="white"
+                  style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
                 >
-                  {initials}
+                  {avatarSrc
+                    ? <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
+                    : initials}
                 </Box>
               );
             })}

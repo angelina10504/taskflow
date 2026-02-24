@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Text } from '@chakra-ui/react';
 import {
   DndContext,
@@ -50,18 +50,12 @@ const UserAvatar = ({ user, index }) => {
       title={user.name}
     >
       <Box
-        w="28px"
-        h="28px"
+        w="28px" h="28px"
         borderRadius="full"
         border="2px solid white"
         overflow="hidden"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        fontSize="9px"
-        fontWeight="bold"
-        color="white"
-        flexShrink={0}
+        display="flex" alignItems="center" justifyContent="center"
+        fontSize="9px" fontWeight="bold" color="white" flexShrink={0}
         style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
       >
         {avatarSrc ? (
@@ -70,16 +64,9 @@ const UserAvatar = ({ user, index }) => {
           initials
         )}
       </Box>
-      {/* Green online dot */}
       <Box
-        position="absolute"
-        bottom="0"
-        right="0"
-        w="8px"
-        h="8px"
-        bg="#22c55e"
-        borderRadius="full"
-        border="1.5px solid white"
+        position="absolute" bottom="0" right="0"
+        w="8px" h="8px" bg="#22c55e" borderRadius="full" border="1.5px solid white"
       />
     </Box>
   );
@@ -100,31 +87,31 @@ const KanbanBoard = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [moveNotif, setMoveNotif] = useState(null);
-  const moveNotifTimer = useRef(null);
-  const { dark } = useColors();
+  const [moveNotifs, setMoveNotifs] = useState([]);
+  const { dark, textMuted } = useColors();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  const addNotif = (name, title, status) => {
+    setMoveNotifs((prev) => [
+      { id: Date.now() + Math.random(), name, title, status },
+      ...prev,
+    ]);
+  };
+
+  const dismissNotif = (id) => {
+    setMoveNotifs((prev) => prev.filter((n) => n.id !== id));
+  };
 
   // Listen for remote task moves
   useEffect(() => {
     if (!socket) return;
 
     const handleRemoteMove = ({ task, movedBy }) => {
-      setTasks((prev) =>
-        prev.map((t) => (t._id === task._id ? task : t))
-      );
-      if (moveNotifTimer.current) clearTimeout(moveNotifTimer.current);
-      setMoveNotif({
-        name: movedBy.name,
-        title: task.title,
-        status: STATUS_LABELS[task.status] || task.status,
-      });
-      moveNotifTimer.current = setTimeout(() => setMoveNotif(null), 4000);
+      setTasks((prev) => prev.map((t) => (t._id === task._id ? task : t)));
+      addNotif(movedBy.name, task.title, STATUS_LABELS[task.status] || task.status);
     };
 
     socket.on('task-moved', handleRemoteMove);
@@ -148,8 +135,6 @@ const KanbanBoard = ({
 
     const draggedTask = tasks.find((t) => t._id === active.id);
 
-    // over.id is either a column status (dropped on empty column / droppable area)
-    // or a task _id (dropped on top of another card) — resolve to column status either way
     let overStatus;
     if (COLUMNS.includes(over.id)) {
       overStatus = over.id;
@@ -164,11 +149,12 @@ const KanbanBoard = ({
       const response = await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
       const updatedTask = response.task;
 
-      const updatedTasks = tasks.map((t) =>
-        t._id === draggedTask._id ? updatedTask : t
-      );
+      const updatedTasks = tasks.map((t) => (t._id === draggedTask._id ? updatedTask : t));
       setTasks(updatedTasks);
       onTasksUpdate?.(updatedTasks);
+
+      // Show notification for own move
+      addNotif('You', updatedTask.title, STATUS_LABELS[overStatus]);
 
       // Broadcast to teammates
       if (socket && currentUser) {
@@ -178,13 +164,6 @@ const KanbanBoard = ({
           movedBy: { id: currentUser.id, name: currentUser.name },
         });
       }
-
-      toaster.create({
-        title: 'Task moved',
-        description: `Task moved to ${STATUS_LABELS[overStatus]}`,
-        type: 'success',
-        duration: 2000,
-      });
     } catch (error) {
       toaster.create({
         title: 'Error',
@@ -223,9 +202,7 @@ const KanbanBoard = ({
   };
 
   const handleTaskUpdate = (updatedTask) => {
-    const updatedTasks = tasks.map((t) =>
-      t._id === updatedTask._id ? updatedTask : t
-    );
+    const updatedTasks = tasks.map((t) => (t._id === updatedTask._id ? updatedTask : t));
     setTasks(updatedTasks);
     setSelectedTask(updatedTask);
     onTasksUpdate?.(updatedTasks);
@@ -237,16 +214,22 @@ const KanbanBoard = ({
     onTasksUpdate?.(updatedTasks);
   };
 
-  // Deduplicate online users by id
   const uniqueOnlineUsers = onlineUsers.filter(
     (u, i, arr) => arr.findIndex((x) => x.id === u.id) === i
   );
   const visibleUsers = uniqueOnlineUsers.slice(0, 6);
   const overflow = uniqueOnlineUsers.length - visibleUsers.length;
 
+  const notifBg       = dark ? '#0f1e30' : '#eff6ff';
+  const notifBorder   = dark ? '#1e4070' : '#bfdbfe';
+  const notifColor    = dark ? '#93c5fd' : '#1d4ed8';
+  const notifSelfBg   = dark ? '#0f2a1a' : '#f0fdf4';
+  const notifSelfBorder = dark ? '#1a4a28' : '#bbf7d0';
+  const notifSelfColor  = dark ? '#4ade80' : '#15803d';
+
   return (
     <Box h="100%" display="flex" flexDirection="column">
-      {/* Toolbar: online users + move notification + new task button */}
+      {/* Toolbar */}
       <Box mb={3} flexShrink={0} display="flex" alignItems="center" justifyContent="space-between" gap={3}>
 
         {/* Online users */}
@@ -258,67 +241,26 @@ const KanbanBoard = ({
               ))}
               {overflow > 0 && (
                 <Box
-                  ml="-8px"
-                  w="28px"
-                  h="28px"
+                  ml="-8px" w="28px" h="28px"
                   borderRadius="full"
                   border="2px solid white"
-                  bg="gray.200"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  fontSize="9px"
-                  fontWeight="bold"
-                  color="gray.600"
+                  bg={dark ? '#2a3244' : 'gray.200'}
+                  display="flex" alignItems="center" justifyContent="center"
+                  fontSize="9px" fontWeight="bold"
+                  color={dark ? 'gray.300' : 'gray.600'}
                   style={{ zIndex: 0 }}
                 >
                   +{overflow}
                 </Box>
               )}
             </Box>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color={textMuted}>
               {uniqueOnlineUsers.length} online
             </Text>
           </Box>
         ) : (
           <Box flexShrink={0} />
         )}
-
-        {/* Inline move notification */}
-        <Box
-          flex={1}
-          display="flex"
-          justifyContent="center"
-          opacity={moveNotif ? 1 : 0}
-          transition="opacity 0.3s"
-          pointerEvents="none"
-        >
-          {moveNotif && (
-            <Box
-              display="inline-flex"
-              alignItems="center"
-              gap={2}
-              px={4}
-              py={1.5}
-              borderRadius="full"
-              bg={dark ? '#162032' : '#eff6ff'}
-              border="1px solid"
-              borderColor={dark ? '#1e4070' : '#bfdbfe'}
-              fontSize="sm"
-              color={dark ? '#93c5fd' : '#1d4ed8'}
-              maxW="420px"
-            >
-              <Text flexShrink={0}>🔄</Text>
-              <Text noOfLines={1}>
-                <Box as="span" fontWeight="semibold">{moveNotif.name}</Box>
-                {' moved '}
-                <Box as="span" fontWeight="semibold">"{moveNotif.title}"</Box>
-                {' → '}
-                <Box as="span" fontWeight="semibold">{moveNotif.status}</Box>
-              </Text>
-            </Box>
-          )}
-        </Box>
 
         <Button
           flexShrink={0}
@@ -329,6 +271,57 @@ const KanbanBoard = ({
           + New Task
         </Button>
       </Box>
+
+      {/* Move notifications — above kanban columns, dismiss with × */}
+      {moveNotifs.length > 0 && (
+        <Box flexShrink={0} mb={3} display="flex" flexDirection="column" gap={2}>
+          {moveNotifs.map((notif) => {
+            const isSelf = notif.name === 'You';
+            return (
+              <Box
+                key={notif.id}
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                px={4} py={2}
+                borderRadius="md"
+                bg={isSelf ? notifSelfBg : notifBg}
+                border="1px solid"
+                borderColor={isSelf ? notifSelfBorder : notifBorder}
+                color={isSelf ? notifSelfColor : notifColor}
+                fontSize="sm"
+              >
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Text flexShrink={0}>🔄</Text>
+                  <Text>
+                    <Box as="span" fontWeight="semibold">{notif.name}</Box>
+                    {' moved '}
+                    <Box as="span" fontWeight="semibold">"{notif.title}"</Box>
+                    {' → '}
+                    <Box as="span" fontWeight="semibold">{notif.status}</Box>
+                  </Text>
+                </Box>
+                <Box
+                  as="button"
+                  onClick={() => dismissNotif(notif.id)}
+                  bg="transparent"
+                  border="none"
+                  cursor="pointer"
+                  color={isSelf ? notifSelfColor : notifColor}
+                  fontSize="xl"
+                  lineHeight={1}
+                  opacity={0.6}
+                  flexShrink={0}
+                  ml={3}
+                  _hover={{ opacity: 1 }}
+                >
+                  ×
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
       <DndContext
         sensors={sensors}

@@ -26,20 +26,29 @@ const ROLE_STYLES = {
   viewer: { bg: 'gray.100',   color: 'gray.600',   darkBg: '#1e2535', darkColor: '#94a3b8', label: 'Viewer' },
 };
 
-const MemberAvatar = ({ name, size = 'md' }) => {
+const API_URL = process.env.REACT_APP_API_URL || '';
+
+const MemberAvatar = ({ name, avatar, size = 'md' }) => {
   const initials = name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
   const sizes = {
     sm: { w: '32px', h: '32px', fontSize: 'xs' },
     md: { w: '48px', h: '48px', fontSize: 'sm' },
   };
+  const hasRealAvatar = avatar && !avatar.includes('ui-avatars.com');
+  const avatarSrc = hasRealAvatar
+    ? avatar.startsWith('/uploads/') ? `${API_URL}${avatar}` : avatar
+    : null;
   return (
     <Box
       w={sizes[size].w} h={sizes[size].h}
-      borderRadius="full" bg="purple.500" color="white"
+      borderRadius="full" overflow="hidden"
       display="flex" alignItems="center" justifyContent="center"
-      fontWeight="bold" fontSize={sizes[size].fontSize} flexShrink={0}
+      fontWeight="bold" fontSize={sizes[size].fontSize} color="white" flexShrink={0}
+      style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
     >
-      {initials}
+      {avatarSrc
+        ? <Box as="img" src={avatarSrc} alt={name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
+        : initials}
     </Box>
   );
 };
@@ -210,7 +219,7 @@ const WorkspaceDetail = () => {
               <Box key={member._id} p={4} borderRadius="md" border="1px solid" borderColor={border}
                 display="flex" alignItems="center" gap={3}
               >
-                <MemberAvatar name={member.user.name} size="md" />
+                <MemberAvatar name={member.user.name} avatar={member.user.avatar} size="md" />
                 <Box flex={1} overflow="hidden">
                   <Text fontWeight="medium" noOfLines={1} color={textPrimary}>{member.user.name}</Text>
                   <Text fontSize="sm" color={textSecondary} noOfLines={1}>{member.user.email}</Text>
