@@ -12,20 +12,7 @@ import {
 import * as taskService from '../../services/taskService';
 import { toaster } from '../ui/toaster';
 import ConfirmDialog from '../common/ConfirmDialog';
-
-const PRIORITY_COLORS = {
-  low: { bg: 'gray.100', color: 'gray.600' },
-  medium: { bg: 'blue.100', color: 'blue.700' },
-  high: { bg: 'orange.100', color: 'orange.700' },
-  urgent: { bg: 'red.100', color: 'red.700' },
-};
-
-const STATUS_COLORS = {
-  todo: { bg: 'gray.100', color: 'gray.600' },
-  in_progress: { bg: 'blue.100', color: 'blue.700' },
-  in_review: { bg: 'purple.100', color: 'purple.700' },
-  done: { bg: 'green.100', color: 'green.700' },
-};
+import useColors from '../../hooks/useColors';
 
 const STATUS_LABELS = {
   todo: 'To Do',
@@ -39,6 +26,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
   const [editData, setEditData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const { dark, cardBg, inputBg, border, textPrimary, textSecondary, textMuted, hoverBg } = useColors();
 
   useEffect(() => {
     if (task) {
@@ -55,6 +43,45 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
     }
     setIsEditing(false);
   }, [task]);
+
+  const selectStyle = {
+    border: `1px solid ${dark ? '#2a3244' : '#e2e8f0'}`,
+    borderRadius: '6px',
+    padding: '4px 8px',
+    fontSize: '14px',
+    background: dark ? '#1a2030' : 'white',
+    color: dark ? '#f1f5f9' : '#1a202c',
+    outline: 'none',
+    cursor: 'pointer',
+  };
+
+  const textareaStyle = {
+    width: '100%',
+    border: `1px solid ${dark ? '#2a3244' : '#e2e8f0'}`,
+    borderRadius: '6px',
+    padding: '8px 12px',
+    fontSize: '14px',
+    resize: 'vertical',
+    fontFamily: 'inherit',
+    outline: 'none',
+    background: dark ? '#1a2030' : 'white',
+    color: dark ? '#f1f5f9' : '#1a202c',
+  };
+
+  // Priority and status badge colors — dark-mode aware
+  const PRIORITY_COLORS = {
+    low:    { bg: dark ? '#1e2535' : 'gray.100',   color: dark ? 'gray.400'   : 'gray.600'   },
+    medium: { bg: dark ? '#0f2040' : 'blue.50',    color: dark ? '#93c5fd'    : 'blue.700'   },
+    high:   { bg: dark ? '#2a1500' : 'orange.50',  color: dark ? '#fb923c'    : 'orange.700' },
+    urgent: { bg: dark ? '#2a0808' : 'red.50',     color: dark ? '#f87171'    : 'red.700'    },
+  };
+
+  const STATUS_COLORS = {
+    todo:        { bg: dark ? '#1e2535' : 'gray.100',   color: dark ? 'gray.400'   : 'gray.600'   },
+    in_progress: { bg: dark ? '#0f2040' : 'blue.50',    color: dark ? '#93c5fd'    : 'blue.700'   },
+    in_review:   { bg: dark ? '#1a0f40' : 'purple.50',  color: dark ? '#c084fc'    : 'purple.700' },
+    done:        { bg: dark ? '#0a2010' : 'green.50',   color: dark ? '#4ade80'    : 'green.700'  },
+  };
 
   const handleSave = async () => {
     if (!editData.title?.trim()) {
@@ -109,20 +136,22 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
     <>
       <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && handleClose()}>
         <DialogBackdrop />
-        <DialogContent maxW="580px">
-          <DialogHeader>
+        <DialogContent maxW="580px" bg={cardBg} color={textPrimary}>
+          <DialogHeader borderBottomColor={border}>
             {isEditing ? (
               <Input
                 value={editData.title}
-                onChange={(e) =>
-                  setEditData((prev) => ({ ...prev, title: e.target.value }))
-                }
+                onChange={(e) => setEditData((prev) => ({ ...prev, title: e.target.value }))}
                 fontSize="lg"
                 fontWeight="bold"
                 pr={8}
+                bg={inputBg}
+                color={textPrimary}
+                borderColor={border}
+                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
               />
             ) : (
-              <Heading size="md" pr={8}>
+              <Heading size="md" pr={8} color={textPrimary}>
                 {task.title}
               </Heading>
             )}
@@ -135,21 +164,11 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
               {isEditing ? (
                 <>
                   <Box>
-                    <Text fontSize="xs" color="gray.500" mb={1} fontWeight="medium">
-                      Status
-                    </Text>
+                    <Text fontSize="xs" color={textMuted} mb={1} fontWeight="medium">Status</Text>
                     <select
                       value={editData.status}
-                      onChange={(e) =>
-                        setEditData((prev) => ({ ...prev, status: e.target.value }))
-                      }
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '14px',
-                        background: 'white',
-                      }}
+                      onChange={(e) => setEditData((prev) => ({ ...prev, status: e.target.value }))}
+                      style={selectStyle}
                     >
                       <option value="todo">To Do</option>
                       <option value="in_progress">In Progress</option>
@@ -158,21 +177,11 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                     </select>
                   </Box>
                   <Box>
-                    <Text fontSize="xs" color="gray.500" mb={1} fontWeight="medium">
-                      Priority
-                    </Text>
+                    <Text fontSize="xs" color={textMuted} mb={1} fontWeight="medium">Priority</Text>
                     <select
                       value={editData.priority}
-                      onChange={(e) =>
-                        setEditData((prev) => ({ ...prev, priority: e.target.value }))
-                      }
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '14px',
-                        background: 'white',
-                      }}
+                      onChange={(e) => setEditData((prev) => ({ ...prev, priority: e.target.value }))}
+                      style={selectStyle}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -183,27 +192,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                 </>
               ) : (
                 <>
-                  <Box
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                    bg={statusStyle.bg}
-                    color={statusStyle.color}
-                    fontSize="sm"
-                    fontWeight="medium"
-                  >
+                  <Box px={3} py={1} borderRadius="full" bg={statusStyle.bg} color={statusStyle.color} fontSize="sm" fontWeight="medium">
                     {STATUS_LABELS[task.status]}
                   </Box>
-                  <Box
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                    bg={priorityStyle.bg}
-                    color={priorityStyle.color}
-                    fontSize="sm"
-                    fontWeight="medium"
-                    textTransform="capitalize"
-                  >
+                  <Box px={3} py={1} borderRadius="full" bg={priorityStyle.bg} color={priorityStyle.color} fontSize="sm" fontWeight="medium" textTransform="capitalize">
                     {task.priority} Priority
                   </Box>
                 </>
@@ -212,30 +204,17 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
 
             {/* Description */}
             <Box mb={4}>
-              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
-                Description
-              </Text>
+              <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={1}>Description</Text>
               {isEditing ? (
                 <textarea
                   value={editData.description}
-                  onChange={(e) =>
-                    setEditData((prev) => ({ ...prev, description: e.target.value }))
-                  }
+                  onChange={(e) => setEditData((prev) => ({ ...prev, description: e.target.value }))}
                   rows={4}
                   placeholder="Add a description..."
-                  style={{
-                    width: '100%',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    fontSize: '14px',
-                    resize: 'vertical',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
+                  style={textareaStyle}
                 />
               ) : (
-                <Text fontSize="sm" color={task.description ? 'gray.700' : 'gray.400'}>
+                <Text fontSize="sm" color={task.description ? textPrimary : textMuted}>
                   {task.description || 'No description'}
                 </Text>
               )}
@@ -243,52 +222,50 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
 
             {/* Link */}
             <Box mb={4}>
-              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
-                Link
-              </Text>
+              <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={1}>Link</Text>
               {isEditing ? (
                 <Input
                   value={editData.link}
-                  onChange={(e) =>
-                    setEditData((prev) => ({ ...prev, link: e.target.value }))
-                  }
+                  onChange={(e) => setEditData((prev) => ({ ...prev, link: e.target.value }))}
                   placeholder="https://..."
                   size="sm"
+                  bg={inputBg}
+                  color={textPrimary}
+                  borderColor={border}
+                  _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
                 />
               ) : task.link ? (
                 <a
                   href={task.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: '14px', color: '#3182ce', wordBreak: 'break-all' }}
+                  style={{ fontSize: '14px', color: '#a78bfa', wordBreak: 'break-all' }}
                 >
                   {task.link}
                 </a>
               ) : (
-                <Text fontSize="sm" color="gray.400">No link</Text>
+                <Text fontSize="sm" color={textMuted}>No link</Text>
               )}
             </Box>
 
             {/* Due Date */}
             <Box mb={4}>
-              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
-                Due Date
-              </Text>
+              <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={1}>Due Date</Text>
               {isEditing ? (
                 <Input
                   type="date"
                   value={editData.dueDate}
-                  onChange={(e) =>
-                    setEditData((prev) => ({ ...prev, dueDate: e.target.value }))
-                  }
+                  onChange={(e) => setEditData((prev) => ({ ...prev, dueDate: e.target.value }))}
                   size="sm"
                   maxW="200px"
+                  bg={inputBg}
+                  color={textPrimary}
+                  borderColor={border}
+                  _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
                 />
               ) : (
-                <Text fontSize="sm" color={task.dueDate ? 'gray.700' : 'gray.400'}>
-                  {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString()
-                    : 'No due date'}
+                <Text fontSize="sm" color={task.dueDate ? textPrimary : textMuted}>
+                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
                 </Text>
               )}
             </Box>
@@ -296,59 +273,35 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
             {/* Estimated Time */}
             {task.estimatedTime && (
               <Box mb={4}>
-                <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={1}>
-                  Estimated Time
-                </Text>
-                <Text fontSize="sm" color="gray.700">
-                  {task.estimatedTime} minutes
-                </Text>
+                <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={1}>Estimated Time</Text>
+                <Text fontSize="sm" color={textPrimary}>{task.estimatedTime} minutes</Text>
               </Box>
             )}
 
             {/* Assignees */}
             {task.assignedTo && task.assignedTo.length > 0 && (
               <Box mb={4}>
-                <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                  Assignees
-                </Text>
+                <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={2}>Assignees</Text>
                 <Box display="flex" gap={2} flexWrap="wrap">
                   {task.assignedTo.map((u) => {
-                    const initials =
-                      u.name
-                        ?.split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2) || 'U';
+                    const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
                     return (
                       <Box
                         key={u._id}
-                        display="flex"
-                        alignItems="center"
-                        gap={2}
-                        bg="gray.50"
-                        border="1px solid"
-                        borderColor="gray.200"
-                        borderRadius="full"
-                        pl={1}
-                        pr={3}
-                        py={1}
+                        display="flex" alignItems="center" gap={2}
+                        bg={hoverBg}
+                        border="1px solid" borderColor={border}
+                        borderRadius="full" pl={1} pr={3} py={1}
                       >
                         <Box
-                          w="24px"
-                          h="24px"
-                          borderRadius="full"
-                          bg="purple.500"
-                          color="white"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          fontSize="10px"
-                          fontWeight="bold"
+                          w="24px" h="24px" borderRadius="full"
+                          display="flex" alignItems="center" justifyContent="center"
+                          fontSize="10px" fontWeight="bold" color="white"
+                          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
                         >
                           {initials}
                         </Box>
-                        <Text fontSize="sm">{u.name}</Text>
+                        <Text fontSize="sm" color={textPrimary}>{u.name}</Text>
                       </Box>
                     );
                   })}
@@ -359,20 +312,12 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
             {/* Labels */}
             {task.labels && task.labels.length > 0 && (
               <Box mb={4}>
-                <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                  Labels
-                </Text>
+                <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={2}>Labels</Text>
                 <Box display="flex" gap={2} flexWrap="wrap">
                   {task.labels.map((label, i) => (
                     <Box
-                      key={i}
-                      px={3}
-                      py={1}
-                      bg="blue.100"
-                      color="blue.700"
-                      borderRadius="full"
-                      fontSize="xs"
-                      fontWeight="medium"
+                      key={i} px={3} py={1} borderRadius="full" fontSize="xs" fontWeight="medium"
+                      bg={dark ? '#0f2040' : 'blue.50'} color={dark ? '#93c5fd' : 'blue.700'}
                     >
                       {label}
                     </Box>
@@ -382,27 +327,26 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
             )}
 
             {/* Footer metadata */}
-            <Box mt={6} pt={4} borderTop="1px solid" borderColor="gray.100">
-              <Text fontSize="xs" color="gray.400">
+            <Box mt={6} pt={4} borderTop="1px solid" borderColor={border}>
+              <Text fontSize="xs" color={textMuted}>
                 Created {new Date(task.createdAt).toLocaleDateString()}
-                {workspaceMemberCount > 1 && task.createdBy?.name
-                  ? ` by ${task.createdBy.name}`
-                  : ''}
+                {workspaceMemberCount > 1 && task.createdBy?.name ? ` by ${task.createdBy.name}` : ''}
               </Text>
               {task.completedAt && (
-                <Text fontSize="xs" color="green.500" mt={1}>
+                <Text fontSize="xs" color="green.400" mt={1}>
                   Completed {new Date(task.completedAt).toLocaleDateString()}
                 </Text>
               )}
             </Box>
           </DialogBody>
 
-          <DialogFooter>
+          <DialogFooter borderTopColor={border}>
             <Box display="flex" justifyContent="space-between" w="full">
               <Button
-                colorScheme="red"
                 variant="ghost"
                 size="sm"
+                color="red.400"
+                _hover={{ bg: dark ? '#3d1f1f' : 'red.50' }}
                 onClick={() => setIsConfirmDeleteOpen(true)}
               >
                 Delete Task
@@ -410,11 +354,19 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
               <Box display="flex" gap={3}>
                 {isEditing ? (
                   <>
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    <Button
+                      variant="outline"
+                      borderColor={border}
+                      color={textPrimary}
+                      _hover={{ bg: hoverBg }}
+                      onClick={() => setIsEditing(false)}
+                    >
                       Cancel
                     </Button>
                     <Button
-                      colorScheme="blue"
+                      style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                      color="white"
+                      _hover={{ opacity: 0.9 }}
                       onClick={handleSave}
                       disabled={isSaving}
                     >
@@ -423,10 +375,21 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                   </>
                 ) : (
                   <>
-                    <Button variant="outline" onClick={handleClose}>
+                    <Button
+                      variant="outline"
+                      borderColor={border}
+                      color={textPrimary}
+                      _hover={{ bg: hoverBg }}
+                      onClick={handleClose}
+                    >
                       Close
                     </Button>
-                    <Button colorScheme="blue" onClick={() => setIsEditing(true)}>
+                    <Button
+                      style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                      color="white"
+                      _hover={{ opacity: 0.9 }}
+                      onClick={() => setIsEditing(true)}
+                    >
                       Edit
                     </Button>
                   </>

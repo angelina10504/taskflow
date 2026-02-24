@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Button, Text } from '@chakra-ui/react';
 import {
   DndContext,
@@ -14,6 +14,7 @@ import CreateTaskModal from './CreateTaskModal';
 import TaskDetailModal from './TaskDetailModal';
 import * as taskService from '../../services/taskService';
 import { toaster } from '../ui/toaster';
+import useColors from '../../hooks/useColors';
 
 const COLUMNS = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -99,6 +100,9 @@ const KanbanBoard = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [moveNotif, setMoveNotif] = useState(null);
+  const moveNotifTimer = useRef(null);
+  const { dark } = useColors();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -114,12 +118,13 @@ const KanbanBoard = ({
       setTasks((prev) =>
         prev.map((t) => (t._id === task._id ? task : t))
       );
-      toaster.create({
-        title: `${movedBy.name} moved a task`,
-        description: `"${task.title}" → ${STATUS_LABELS[task.status] || task.status}`,
-        type: 'info',
-        duration: 3000,
+      if (moveNotifTimer.current) clearTimeout(moveNotifTimer.current);
+      setMoveNotif({
+        name: movedBy.name,
+        title: task.title,
+        status: STATUS_LABELS[task.status] || task.status,
       });
+      moveNotifTimer.current = setTimeout(() => setMoveNotif(null), 4000);
     };
 
     socket.on('task-moved', handleRemoteMove);
@@ -240,13 +245,13 @@ const KanbanBoard = ({
   const overflow = uniqueOnlineUsers.length - visibleUsers.length;
 
   return (
-    <Box>
-      {/* Toolbar: online users + new task button */}
-      <Box mb={4} display="flex" alignItems="center" justifyContent="space-between">
+    <Box h="100%" display="flex" flexDirection="column">
+      {/* Toolbar: online users + move notification + new task button */}
+      <Box mb={3} flexShrink={0} display="flex" alignItems="center" justifyContent="space-between" gap={3}>
 
         {/* Online users */}
         {uniqueOnlineUsers.length > 0 ? (
-          <Box display="flex" alignItems="center" gap={2}>
+          <Box display="flex" alignItems="center" gap={2} flexShrink={0}>
             <Box display="flex" alignItems="center">
               {visibleUsers.map((u, i) => (
                 <UserAvatar key={u.id} user={u} index={i} />
@@ -276,10 +281,51 @@ const KanbanBoard = ({
             </Text>
           </Box>
         ) : (
-          <Box />
+          <Box flexShrink={0} />
         )}
 
-        <Button colorScheme="blue" onClick={() => setIsCreateModalOpen(true)}>
+        {/* Inline move notification */}
+        <Box
+          flex={1}
+          display="flex"
+          justifyContent="center"
+          opacity={moveNotif ? 1 : 0}
+          transition="opacity 0.3s"
+          pointerEvents="none"
+        >
+          {moveNotif && (
+            <Box
+              display="inline-flex"
+              alignItems="center"
+              gap={2}
+              px={4}
+              py={1.5}
+              borderRadius="full"
+              bg={dark ? '#162032' : '#eff6ff'}
+              border="1px solid"
+              borderColor={dark ? '#1e4070' : '#bfdbfe'}
+              fontSize="sm"
+              color={dark ? '#93c5fd' : '#1d4ed8'}
+              maxW="420px"
+            >
+              <Text flexShrink={0}>🔄</Text>
+              <Text noOfLines={1}>
+                <Box as="span" fontWeight="semibold">{moveNotif.name}</Box>
+                {' moved '}
+                <Box as="span" fontWeight="semibold">"{moveNotif.title}"</Box>
+                {' → '}
+                <Box as="span" fontWeight="semibold">{moveNotif.status}</Box>
+              </Text>
+            </Box>
+          )}
+        </Box>
+
+        <Button
+          flexShrink={0}
+          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
+          _hover={{ opacity: 0.9 }}
+          onClick={() => setIsCreateModalOpen(true)}
+        >
           + New Task
         </Button>
       </Box>
@@ -290,7 +336,7 @@ const KanbanBoard = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <Box display="flex" gap={4} overflowX="auto" pb={4}>
+        <Box flex={1} display="flex" gap={4} overflow="hidden">
           {COLUMNS.map((status) => (
             <KanbanColumn
               key={status}

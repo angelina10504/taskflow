@@ -20,19 +20,21 @@ const KanbanColumn = ({ status, tasks, onTaskClick, workspaceMemberCount }) => {
   const columnBg = dark ? '#151d2e' : 'gray.50';
 
   return (
-    <Box flex={1} minW="280px">
+    <Box flex={1} minW="0" display="flex" flexDirection="column">
       <Box
         bg={columnBg}
         p={4}
         borderRadius="lg"
-        minH="600px"
+        h="100%"
+        display="flex"
+        flexDirection="column"
         border="1px solid"
         borderColor={border}
         borderTop="4px solid"
         style={{ borderTopColor: config.borderColor }}
       >
         {/* Column Header */}
-        <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
+        <Box mb={3} flexShrink={0} display="flex" justifyContent="space-between" alignItems="center">
           <Box display="flex" alignItems="center" gap={2}>
             <Text fontSize="xl">{config.icon}</Text>
             <Heading size="md" color={config.color}>{config.title}</Heading>
@@ -46,27 +48,33 @@ const KanbanColumn = ({ status, tasks, onTaskClick, workspaceMemberCount }) => {
           </Box>
         </Box>
 
-        {/* Droppable Area */}
+        {/* Droppable Area — scrolls vertically */}
         <SortableContext items={tasks.map((task) => task._id)} strategy={verticalListSortingStrategy}>
-          <Box ref={setNodeRef} minH="500px">
-            <Box display="flex" flexDirection="column" gap={3}>
-              {tasks.map((task) => (
-                <SortableTaskCard
-                  key={task._id}
-                  task={task}
-                  onClick={() => onTaskClick(task)}
-                  workspaceMemberCount={workspaceMemberCount}
-                />
-              ))}
-            </Box>
+          <Box ref={setNodeRef} flex={1} overflowY="auto" pr={1}>
+            {tasks.length === 0 ? (
+              <Box
+                h="100%"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                color={textMuted}
+              >
+                <Text fontSize="sm">No tasks</Text>
+              </Box>
+            ) : (
+              <Box display="flex" flexDirection="column" gap={3} pb={2}>
+                {tasks.map((task) => (
+                  <SortableTaskCard
+                    key={task._id}
+                    task={task}
+                    onClick={() => onTaskClick(task)}
+                    workspaceMemberCount={workspaceMemberCount}
+                  />
+                ))}
+              </Box>
+            )}
           </Box>
         </SortableContext>
-
-        {tasks.length === 0 && (
-          <Box textAlign="center" py={10} color={textMuted}>
-            <Text fontSize="sm">No tasks</Text>
-          </Box>
-        )}
       </Box>
     </Box>
   );

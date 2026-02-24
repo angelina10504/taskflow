@@ -9,6 +9,7 @@ import {
   DialogBackdrop,
   DialogCloseTrigger,
 } from '../ui/dialog';
+import useColors from '../../hooks/useColors';
 
 const ConfirmDialog = ({
   isOpen,
@@ -19,27 +20,36 @@ const ConfirmDialog = ({
   confirmLabel = 'Delete',
   colorScheme = 'red',
 }) => {
+  const { dark, cardBg, border, textPrimary, textSecondary, hoverBg } = useColors();
+
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && onClose()}>
       <DialogBackdrop />
-      <DialogContent maxW="420px">
-        <DialogHeader>
-          <Heading size="md">{title}</Heading>
+      <DialogContent maxW="420px" bg={cardBg} color={textPrimary}>
+        <DialogHeader borderBottomColor={border}>
+          <Heading size="md" color={textPrimary}>{title}</Heading>
           <DialogCloseTrigger />
         </DialogHeader>
         <DialogBody>
-          <Text color="gray.600">{message}</Text>
+          <Text color={textSecondary}>{message}</Text>
         </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} mr={3}>
+        <DialogFooter borderTopColor={border}>
+          <Button
+            variant="outline"
+            borderColor={border}
+            color={textPrimary}
+            _hover={{ bg: hoverBg }}
+            onClick={onClose}
+            mr={3}
+          >
             Cancel
           </Button>
           <Button
-            colorScheme={colorScheme}
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            bg={dark ? '#3d1f1f' : 'red.500'}
+            color={colorScheme === 'red' ? 'white' : undefined}
+            colorScheme={colorScheme !== 'red' ? colorScheme : undefined}
+            _hover={{ opacity: 0.85 }}
+            onClick={() => { onConfirm(); onClose(); }}
           >
             {confirmLabel}
           </Button>

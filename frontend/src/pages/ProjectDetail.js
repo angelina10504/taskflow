@@ -67,14 +67,14 @@ const ProjectDetail = () => {
   if (!project) return null;
 
   return (
-    <Box py={8} px={8}>
+    <Box h="100vh" display="flex" flexDirection="column" overflow="hidden" px={6} pt={5} pb={5}>
       {/* Breadcrumb */}
-      <Box mb={6} display="flex" gap={2} alignItems="center" fontSize="sm" color={textMuted}>
-        <Text cursor="pointer" _hover={{ color: 'blue.400' }} onClick={() => navigate('/workspaces')}>
+      <Box mb={3} display="flex" gap={2} alignItems="center" fontSize="sm" color={textMuted} flexShrink={0}>
+        <Text cursor="pointer" _hover={{ color: 'purple.400' }} onClick={() => navigate('/workspaces')}>
           Workspaces
         </Text>
         <Text>›</Text>
-        <Text cursor="pointer" _hover={{ color: 'blue.400' }}
+        <Text cursor="pointer" _hover={{ color: 'purple.400' }}
           onClick={() => navigate(`/workspaces/${project.workspace._id || project.workspace}`)}
         >
           {project.workspace.name || 'Workspace'}
@@ -84,13 +84,14 @@ const ProjectDetail = () => {
       </Box>
 
       {/* Project Header */}
-      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" mb={6}
+      <Box
+        bg={panelBg} px={5} py={4} borderRadius="lg" mb={4} flexShrink={0}
         border="1px solid" borderColor={border}
-        borderLeft="4px solid" borderLeftColor={project.color || 'blue.500'}
+        borderLeft="4px solid" borderLeftColor={project.color || 'purple.500'}
       >
-        <Box display="flex" alignItems="center" gap={3} mb={3}>
-          <Text fontSize="4xl">{project.icon || '📊'}</Text>
-          <Heading size="2xl" color={textPrimary}>{project.name}</Heading>
+        <Box display="flex" alignItems="center" gap={3} mb={1}>
+          <Text fontSize="2xl">{project.icon || '📊'}</Text>
+          <Heading size="lg" color={textPrimary}>{project.name}</Heading>
           {project.status === 'archived' && (
             <Box px={3} py={1} bg="orange.100" color="orange.700" borderRadius="md" fontSize="sm" fontWeight="medium">
               📦 Archived
@@ -98,31 +99,45 @@ const ProjectDetail = () => {
           )}
         </Box>
         {project.description && (
-          <Text color={textSecondary} fontSize="lg" mb={4}>{project.description}</Text>
+          <Text color={textSecondary} fontSize="sm" mb={2}>{project.description}</Text>
         )}
-        <Box display="flex" gap={6} fontSize="sm" color={textMuted}>
+        <Box display="flex" gap={4} fontSize="xs" color={textMuted}>
           {project.deadline && <Text>📅 Due: {new Date(project.deadline).toLocaleDateString()}</Text>}
           <Text>Created by {project.createdBy?.name || 'Unknown'}</Text>
           <Text>{new Date(project.createdAt).toLocaleDateString()}</Text>
         </Box>
       </Box>
 
-      {/* Tasks / Kanban */}
-      <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" border="1px solid" borderColor={border}>
-        <Heading size="lg" mb={6} color={textPrimary}>Tasks</Heading>
+      {/* Tasks / Kanban — fills remaining height */}
+      <Box
+        flex={1}
+        overflow="hidden"
+        display="flex"
+        flexDirection="column"
+        bg={panelBg}
+        px={5}
+        pt={4}
+        pb={4}
+        borderRadius="lg"
+        border="1px solid"
+        borderColor={border}
+      >
+        <Heading size="md" mb={4} color={textPrimary} flexShrink={0}>Tasks</Heading>
         {tasksLoading ? (
-          <Center py={10}><Spinner size="lg" color="blue.500" /></Center>
+          <Center flex={1}><Spinner size="lg" color="purple.400" /></Center>
         ) : (
-          <KanbanBoard
-            projectId={id}
-            workspaceId={project.workspace._id || project.workspace}
-            initialTasks={tasks}
-            onTasksUpdate={setTasks}
-            workspaceMemberCount={project.workspace?.members?.length || 1}
-            socket={socket}
-            onlineUsers={onlineUsers}
-            currentUser={user}
-          />
+          <Box flex={1} overflow="hidden">
+            <KanbanBoard
+              projectId={id}
+              workspaceId={project.workspace._id || project.workspace}
+              initialTasks={tasks}
+              onTasksUpdate={setTasks}
+              workspaceMemberCount={project.workspace?.members?.length || 1}
+              socket={socket}
+              onlineUsers={onlineUsers}
+              currentUser={user}
+            />
+          </Box>
         )}
       </Box>
     </Box>
