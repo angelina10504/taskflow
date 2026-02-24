@@ -15,6 +15,7 @@ import * as workspaceService from '../services/workspaceService';
 import CreateWorkspaceModal from '../components/workspace/CreateWorkspaceModal';
 import WorkspaceCard from '../components/workspace/WorkspaceCard';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import useColors from '../hooks/useColors';
 
 const Workspaces = () => {
   const [workspaces, setWorkspaces] = useState([]);
@@ -23,6 +24,7 @@ const Workspaces = () => {
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { textPrimary, textSecondary } = useColors();
 
   useEffect(() => {
     fetchWorkspaces();
@@ -93,32 +95,39 @@ const Workspaces = () => {
     <Box py={8} px={8}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={8}>
         <Box>
-          <Heading size="2xl" mb={1}>
+          <Heading size="2xl" mb={1} color={textPrimary}>
             My Workspaces
           </Heading>
-          <Text color="gray.500">Manage your workspaces and collaborate with teams</Text>
+          <Text color={textSecondary}>Manage your workspaces and collaborate with teams</Text>
         </Box>
-        <Button colorScheme="blue" size="lg" onClick={() => setIsCreateModalOpen(true)}>
+        <Button
+          size="lg"
+          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
+          _hover={{ opacity: 0.9 }}
+          onClick={() => setIsCreateModalOpen(true)}
+        >
           + New Workspace
         </Button>
       </Box>
 
       {isLoading ? (
         <Center py={20}>
-          <Spinner size="xl" color="blue.500" />
+          <Spinner size="xl" color="purple.400" />
         </Center>
       ) : workspaces.length === 0 ? (
         <Box textAlign="center" py={20}>
-          <Text fontSize="6xl" mb={4}>
-            📁
-          </Text>
-          <Heading size="lg" mb={2}>
+          <Text fontSize="6xl" mb={4}>📁</Text>
+          <Heading size="lg" mb={2} color={textPrimary}>
             No workspaces yet
           </Heading>
-          <Text color="gray.600" mb={6}>
+          <Text color={textSecondary} mb={6}>
             Create your first workspace to get started
           </Text>
-          <Button colorScheme="blue" onClick={() => setIsCreateModalOpen(true)}>
+          <Button
+            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
+            _hover={{ opacity: 0.9 }}
+            onClick={() => setIsCreateModalOpen(true)}
+          >
             Create Workspace
           </Button>
         </Box>

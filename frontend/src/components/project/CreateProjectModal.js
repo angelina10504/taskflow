@@ -9,6 +9,7 @@ import {
   DialogBackdrop,
   DialogCloseTrigger,
 } from '../ui/dialog';
+import useColors from '../../hooks/useColors';
 
 const COLORS = [
   { name: 'Indigo', value: '#6366f1' },
@@ -33,20 +34,17 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const { dark, cardBg, inputBg, border, textPrimary, hoverBg } = useColors();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Project name is required';
-    }
+    if (!formData.name.trim()) newErrors.name = 'Project name is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -54,20 +52,10 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-
     setIsLoading(true);
     try {
-      await onCreate({
-        ...formData,
-        workspace: workspaceId,
-      });
-      setFormData({
-        name: '',
-        description: '',
-        color: '#6366f1',
-        icon: '📊',
-        deadline: '',
-      });
+      await onCreate({ ...formData, workspace: workspaceId });
+      setFormData({ name: '', description: '', color: '#6366f1', icon: '📊', deadline: '' });
       onClose();
     } catch (error) {
       // Error handled in parent
@@ -77,13 +65,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   };
 
   const handleClose = () => {
-    setFormData({
-      name: '',
-      description: '',
-      color: '#6366f1',
-      icon: '📊',
-      deadline: '',
-    });
+    setFormData({ name: '', description: '', color: '#6366f1', icon: '📊', deadline: '' });
     setErrors({});
     onClose();
   };
@@ -91,16 +73,16 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   return (
     <DialogRoot open={isOpen} onOpenChange={(e) => !e.open && handleClose()}>
       <DialogBackdrop />
-      <DialogContent>
-        <DialogHeader>
-          <Heading size="lg">Create New Project</Heading>
+      <DialogContent bg={cardBg} color={textPrimary}>
+        <DialogHeader borderBottomColor={border}>
+          <Heading size="lg" color={textPrimary}>Create New Project</Heading>
           <DialogCloseTrigger />
         </DialogHeader>
 
         <DialogBody>
           <form onSubmit={handleSubmit} id="create-project-form">
             <Box mb={4}>
-              <Text mb={2} fontWeight="medium" fontSize="sm">
+              <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Project Name *
               </Text>
               <Input
@@ -108,17 +90,18 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="e.g., Website Redesign"
-                borderColor={errors.name ? 'red.500' : 'gray.200'}
+                bg={inputBg}
+                color={textPrimary}
+                borderColor={errors.name ? 'red.500' : border}
+                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
               />
               {errors.name && (
-                <Text color="red.500" fontSize="sm" mt={1}>
-                  {errors.name}
-                </Text>
+                <Text color="red.400" fontSize="sm" mt={1}>{errors.name}</Text>
               )}
             </Box>
 
             <Box mb={4}>
-              <Text mb={2} fontWeight="medium" fontSize="sm">
+              <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Description (optional)
               </Text>
               <Input
@@ -126,30 +109,31 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="What's this project about?"
+                bg={inputBg}
+                color={textPrimary}
+                borderColor={border}
+                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
               />
             </Box>
 
             <Box mb={4}>
-              <Text mb={2} fontWeight="medium" fontSize="sm">
+              <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Icon
               </Text>
               <Box display="flex" gap={2} flexWrap="wrap">
                 {ICONS.map((icon) => (
                   <Box
                     key={icon}
-                    w="40px"
-                    h="40px"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
+                    w="40px" h="40px"
+                    display="flex" alignItems="center" justifyContent="center"
                     fontSize="xl"
                     borderRadius="md"
                     border="2px solid"
-                    borderColor={formData.icon === icon ? 'blue.500' : 'gray.200'}
-                    bg={formData.icon === icon ? 'blue.50' : 'white'}
+                    borderColor={formData.icon === icon ? 'purple.400' : border}
+                    bg={formData.icon === icon ? (dark ? '#2d1a5e' : 'purple.50') : inputBg}
                     cursor="pointer"
-                    transition="all 0.2s"
-                    _hover={{ borderColor: 'blue.300' }}
+                    transition="all 0.15s"
+                    _hover={{ borderColor: 'purple.400' }}
                     onClick={() => setFormData((prev) => ({ ...prev, icon }))}
                   >
                     {icon}
@@ -159,21 +143,20 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
             </Box>
 
             <Box mb={4}>
-              <Text mb={2} fontWeight="medium" fontSize="sm">
+              <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Color
               </Text>
               <Box display="flex" gap={2} flexWrap="wrap">
                 {COLORS.map((color) => (
                   <Box
                     key={color.value}
-                    w="40px"
-                    h="40px"
+                    w="40px" h="40px"
                     borderRadius="md"
                     bg={color.value}
                     border="3px solid"
-                    borderColor={formData.color === color.value ? 'gray.800' : 'transparent'}
+                    borderColor={formData.color === color.value ? 'white' : 'transparent'}
                     cursor="pointer"
-                    transition="all 0.2s"
+                    transition="all 0.15s"
                     _hover={{ transform: 'scale(1.1)' }}
                     onClick={() => setFormData((prev) => ({ ...prev, color: color.value }))}
                   />
@@ -182,7 +165,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
             </Box>
 
             <Box>
-              <Text mb={2} fontWeight="medium" fontSize="sm">
+              <Text mb={2} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Deadline (optional)
               </Text>
               <Input
@@ -190,19 +173,32 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 type="date"
                 value={formData.deadline}
                 onChange={handleChange}
+                bg={inputBg}
+                color={textPrimary}
+                borderColor={border}
+                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
               />
             </Box>
           </form>
         </DialogBody>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} mr={3}>
+        <DialogFooter borderTopColor={border}>
+          <Button
+            variant="outline"
+            borderColor={border}
+            color={textPrimary}
+            _hover={{ bg: hoverBg }}
+            onClick={handleClose}
+            mr={3}
+          >
             Cancel
           </Button>
           <Button
             type="submit"
             form="create-project-form"
-            colorScheme="blue"
+            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            color="white"
+            _hover={{ opacity: 0.9 }}
             disabled={isLoading}
           >
             {isLoading ? 'Creating...' : 'Create Project'}
