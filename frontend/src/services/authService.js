@@ -76,6 +76,16 @@ export const isAuthenticated = () => {
   return !!getAccessToken();
 };
 
+// Get current user from DB
+export const getMe = async () => {
+  try {
+    const response = await api.get('/api/auth/me');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch user' };
+  }
+};
+
 // Update profile
 export const updateProfile = async (data) => {
   try {

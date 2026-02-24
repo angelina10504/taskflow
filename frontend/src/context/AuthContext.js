@@ -15,12 +15,30 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on mount
+  // Check if user is logged in on mount — fetch fresh data from DB
   useEffect(() => {
-    const initAuth = () => {
-      const currentUser = authService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
+    const initAuth = async () => {
+      const token = authService.getAccessToken();
+      if (token) {
+        try {
+          const response = await authService.getMe();
+          const u = response.user;
+          const userData = {
+            id: u._id,
+            name: u.name,
+            email: u.email,
+            avatar: u.avatar,
+            bio: u.bio,
+            jobTitle: u.jobTitle,
+            phone: u.phone,
+            timezone: u.timezone,
+          };
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } catch {
+          // Token invalid — clear and treat as logged out
+          authService.logout();
+        }
       }
       setLoading(false);
     };
