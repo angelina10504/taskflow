@@ -4,8 +4,6 @@ const {
   generateRefreshToken,
 } = require('../utils/generateToken');
 const { OAuth2Client } = require('google-auth-library');
-const path = require('path');
-const fs = require('fs');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -300,19 +298,9 @@ const uploadAvatar = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    const avatarPath = `/uploads/avatars/${req.file.filename}`;
-
+    // req.file.path is the Cloudinary URL returned by multer-storage-cloudinary
     const user = await User.findById(req.user.id);
-
-    // Delete old avatar if it's a local upload
-    if (user.avatar && user.avatar.startsWith('/uploads/')) {
-      const oldPath = path.join(__dirname, '..', user.avatar);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
-    }
-
-    user.avatar = avatarPath;
+    user.avatar = req.file.path;
     await user.save();
 
     res.status(200).json({

@@ -10,7 +10,7 @@ const connectDB = require('./config/db');
 dotenv.config();
 
 console.log('✅ Environment loaded');
-console.log('📍 MongoDB URI exists:', !!process.env.MONGODB_URI);
+console.log('📍 MongoDB URI exists:', !!process.env.MONGO_URI);
 
 // Connect to MongoDB
 connectDB();
@@ -60,7 +60,9 @@ const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL || '*',
     credentials: true
-  }
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
 // projectId -> Map(socketId -> { id, name, avatar })
