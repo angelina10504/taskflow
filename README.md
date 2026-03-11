@@ -1,151 +1,93 @@
-# TaskFlow
+# 📝 TaskFlow
 
-A full-stack project management app (Trello/Notion-style) with workspaces, projects, and a Kanban task board.
+A full-stack, high-performance project management application inspired by Trello and Notion. TaskFlow features a multi-tenant workspace architecture, real-time Kanban boards, and a robust JWT-based authentication system.
+
+*(Add your main project screenshot here)*
+![TaskFlow Kanban Board](./screenshots/main-board.png)
 
 ---
 
-## Tech Stack
+## 🚀 Key Features
+
+* **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer).
+* **Real-time Kanban:** Interactive board using `@dnd-kit` for smooth drag-and-drop. Task movements are synced across all active users in a project via **Socket.IO**.
+* **Smart Tasks:** Track priorities (Low to Urgent), assignees, labels, and estimated time. Automatic `completedAt` timestamps are generated when moved to "Done."
+* **Secure Authentication:** Dual-token JWT system (Access/Refresh) with automated silent refreshing via Axios interceptors and Google OAuth support.
+* **Member Invitations:** Invite teammates via email with secure, 7-day expiring tokens.
+* **Profile Customization:** Ephemeral file handling using Multer, with direct uploads to Cloudinary (auto-cropped to 400x400).
+
+---
+
+## 🛠️ Tech Stack
 
 | Layer | Technologies |
-|---|---|
-| **Backend** | Node.js, Express 5, MongoDB + Mongoose, Socket.IO |
-| **Auth** | JWT (access 15m + refresh 7d), bcryptjs |
+| :--- | :--- |
 | **Frontend** | React 19, React Router 7, Chakra UI 3 |
-| **State** | Context API (AuthContext) |
-| **Drag & Drop** | @dnd-kit |
-| **HTTP** | Axios with auto token-refresh interceptors |
-| **Deployment** | Railway (backend) |
+| **Backend** | Node.js, Express 5, MongoDB + Mongoose, Socket.IO |
+| **Authentication** | JWT (15m Access + 7d Refresh), bcryptjs (10 rounds) |
+| **State & HTTP** | Context API, Axios (with interceptors) |
+| **Drag & Drop** | `@dnd-kit` |
+| **Deployment** | Railway/Render (Backend), Vercel/Netlify (Frontend) |
 
 ---
 
-## Project Structure
+## 🏗️ Architecture & Request Flow
 
-```
-taskflow/
-├── backend/
-│   ├── models/         User, Workspace, Project, Task
-│   ├── controllers/    auth, workspace, project, task
-│   ├── routes/         /api/auth, /workspaces, /projects, /tasks
-│   ├── middleware/     JWT auth guard
-│   └── server.js
-└── frontend/
-    ├── pages/          Login, Register, Dashboard, Workspaces, WorkspaceDetail, ProjectDetail
-    ├── components/     KanbanBoard, TaskCard, Modals, etc.
-    ├── services/       api.js (axios), authService, workspaceService, etc.
-    └── context/        AuthContext
-```
+### 1. Silent Authentication & Interceptors
+TaskFlow uses a seamless token rotation strategy. Users receive a short-lived **Access Token (15m)** and a long-lived **Refresh Token (7d)** stored in `localStorage`. 
+* All API calls route through an Axios instance.
+* If a request receives a `401 Unauthorized`, the interceptor automatically pauses the queue, hits `POST /api/auth/refresh-token`, updates the tokens, and retries the original request without user interruption.
 
----
+### 2. Real-time Collaboration (Socket.IO)
+When a user opens a project, the client joins a specific Socket.IO room partitioned by `projectId`. 
+* **Optimized for Cloud:** Connections use `pingTimeout: 60000` and `pingInterval: 25000` to keep the connection alive on ephemeral hosts like Render/Railway.
+* **Auto-Reconnect:** The frontend is configured with `reconnection: true` and a `1000ms` delay to handle network drops gracefully.
 
-## Key Features
-
-- **Auth**: Register/Login with JWT stored in localStorage, auto-refresh on 401
-- **Workspaces**: Multi-tenant, role-based access (owner/admin/member/viewer), invite members by email with 7-day expiring tokens
-- **Projects**: Color/icon customization, deadlines, archive/unarchive
-- **Tasks**: Kanban board (todo → in_progress → in_review → done), drag-and-drop ordering, priority levels, assignees, labels, estimated time — auto-timestamps when moved to "done"
+### 3. Database Entity Relationships
+The MongoDB schema is designed for multi-tenant scalability:
+* **User** belongs to many **Workspaces** (via `members` array).
+* **Workspace** contains **Projects** and manages Role-Based Access Control (`owner`, `admin`, `member`, `viewer`).
+* **Project** contains **Tasks**.
+* **Task** belongs to both a Project and a Workspace (for optimized querying), tracking `status`, `priority`, `position`, and `assignedTo`.
 
 ---
 
-## API Endpoints
+## 🔌 Core API Endpoints
 
-### Auth (`/api/auth`)
+### 🔐 Auth (`/api/auth`)
 | Method | Endpoint | Description |
-|---|---|---|
-| POST | `/register` | Register new user |
-| POST | `/login` | Login user |
-| POST | `/refresh-token` | Refresh access token |
-| GET | `/me` | Get current user (protected) |
+| :--- | :--- | :--- |
+| POST | `/register` | Register a new user |
+| POST | `/login` | Authenticate and receive JWTs |
+| POST | `/refresh-token` | Exchange refresh token for new access token |
+| GET | `/me` | Get current authenticated user profile |
 
-### Workspaces (`/api/workspaces`) — all protected
+### 🏢 Workspaces (`/api/workspaces`) - *Protected*
 | Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Get all user's workspaces |
-| GET | `/:id` | Get single workspace |
-| POST | `/` | Create workspace |
-| PUT | `/:id` | Update workspace |
-| DELETE | `/:id` | Delete workspace |
-| POST | `/:id/leave` | Leave workspace |
-| POST | `/:id/invite` | Invite member by email |
-| DELETE | `/:id/members/:userId` | Remove member |
+| :--- | :--- | :--- |
+| POST | `/` | Create a new workspace |
+| POST | `/:id/invite` | Generate a 7-day email invitation token |
+| DELETE | `/:id/members/:userId`| Remove a member from the workspace |
 
-### Projects (`/api/projects`) — all protected
+### 📊 Projects & Tasks (`/api/projects`, `/api/tasks`) - *Protected*
 | Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Get projects (requires `?workspace=id`) |
-| GET | `/:id` | Get single project |
-| POST | `/` | Create project |
-| PUT | `/:id` | Update project |
-| DELETE | `/:id` | Delete project |
-| PATCH | `/:id/archive` | Toggle archive status |
-
-### Tasks (`/api/tasks`) — all protected
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Get tasks (requires `?project=id`) |
-| GET | `/:id` | Get single task |
-| POST | `/` | Create task |
-| PUT | `/:id` | Update task |
-| PATCH | `/:id/status` | Update task status & position |
-| PATCH | `/:id/reorder` | Batch reorder tasks |
-| DELETE | `/:id` | Delete task |
+| :--- | :--- | :--- |
+| GET | `/projects?workspace=id`| Get all projects for a workspace |
+| PATCH | `/tasks/:id/status` | Update task status (todo/in_progress/done) |
+| PATCH | `/tasks/:id/reorder` | Batch update task positions after drag-and-drop |
 
 ---
 
-## Database Models
+## ⚙️ Environment Setup
 
-### User
-- `name`, `email` (unique), `password` (hashed), `avatar`, `bio`, `timezone`, `isEmailVerified`
+To run this project locally, create a `.env` file in the `/backend` directory:
 
-### Workspace
-- `name`, `description`, `owner` → User
-- `members[]` → `{ user, role: owner|admin|member|viewer, joinedAt }`
-- `invitations[]` → `{ email, role, token, expiresAt (7d), invitedBy }`
-- Pre-save hook: automatically adds owner to members on creation
-
-### Project
-- `name`, `description`, `workspace` → Workspace
-- `color` (default: #6366f1), `icon` (default: 📊), `deadline`
-- `status: active | archived`, `createdBy` → User
-
-### Task
-- `title`, `description`, `project` → Project, `workspace` → Workspace
-- `status: todo | in_progress | in_review | done`
-- `priority: low | medium | high | urgent`
-- `assignedTo[]` → User, `createdBy` → User
-- `dueDate`, `estimatedTime` (minutes), `labels[]`, `position`
-- `completedAt` — auto-set when status becomes `done`
-
----
-
-## Authentication Flow
-
-```
-Register/Login
-  → Generate JWT (access token: 15m, refresh token: 7d)
-  → Store in localStorage
-  → Include access token in Authorization header
-  → 401 response? → Use refresh token to get new access token
-  → Retry original request
-  → Logout + redirect on refresh failure
-```
-
----
-
-## Security
-
-- Password hashing with bcryptjs (10 salt rounds)
-- Short-lived JWT access tokens (15 min) with refresh mechanism
-- Workspace membership verified on all project/task operations
-- Role-based access control (owner/admin/member/viewer)
-- CORS configured for client origin
-- Protected routes on frontend
-
----
-
-## Known TODOs
-
-- Email sending for member invitations (no email client configured yet)
-- Task detail modal on click
-- Full real-time collaboration via Socket.IO (scaffolded but minimal)
-- Password reset flow
-- Email verification flow
+```env
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+JWT_ACCESS_SECRET=your_access_secret_key
+JWT_REFRESH_SECRET=your_refresh_secret_key
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLIENT_URL=http://localhost:3000
