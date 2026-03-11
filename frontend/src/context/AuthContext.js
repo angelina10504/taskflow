@@ -15,74 +15,65 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on mount — fetch fresh data from DB
+  // Check if user is logged in on mount
   useEffect(() => {
     const initAuth = async () => {
-      const token = authService.getAccessToken();
-      if (token) {
-        try {
-          const response = await authService.getMe();
-          const u = response.user;
-          const userData = {
-            id: u._id,
-            name: u.name,
-            email: u.email,
-            avatar: u.avatar,
-            bio: u.bio,
-            jobTitle: u.jobTitle,
-            phone: u.phone,
-            timezone: u.timezone,
-          };
-          setUser(userData);
-          localStorage.setItem('user', JSON.stringify(userData));
-        } catch {
-          // Token invalid — clear and treat as logged out
-          authService.logout();
-        }
+      try {
+        const response = await authService.getMe();
+        const u = response.user;
+        const userData = {
+          id: u._id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar,
+          bio: u.bio,
+          jobTitle: u.jobTitle,
+          phone: u.phone,
+          timezone: u.timezone,
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } catch {
+        // FIXED: Both access token and refresh cookie are invalid or missing.
+        // We just wipe the local state silently instead of calling the backend logout.
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken'); 
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
   }, []);
 
-  // Register function - removed navigate, let components handle it
+  // Register function
   const register = async (userData) => {
-    try {
-      const response = await authService.register(userData);
-      setUser(response.user);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    const response = await authService.register(userData);
+    setUser(response.user);
+    return response;
   };
 
-  // Login function - removed navigate, let components handle it
+  // Login function
   const login = async (credentials) => {
-    try {
-      const response = await authService.login(credentials);
-      setUser(response.user);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    const response = await authService.login(credentials);
+    setUser(response.user);
+    return response;
   };
 
   // Google login function
   const googleLogin = async (credential) => {
-    try {
-      const response = await authService.googleLogin(credential);
-      setUser(response.user);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    const response = await authService.googleLogin(credential);
+    setUser(response.user);
+    return response;
   };
 
-  // Logout function - removed navigate, let components handle it
+  // Logout function
   const logout = async () => {
-    await authService.logout();
+    await authService.logout(); // Tells backend to destroy the HTTP-only cookie
     setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken'); // Ensure everything is wiped on the frontend
   };
 
   // Update user
