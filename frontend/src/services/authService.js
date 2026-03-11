@@ -117,16 +117,13 @@ export const uploadAvatar = async (file) => {
 
 // Refresh access token — cookie is sent automatically via withCredentials
 export const refreshAccessToken = async () => {
-  try {
-    const response = await api.post('/api/auth/refresh-token');
+  // 🛑 FIX APPLIED: Removed try/catch block and the logout() call.
+  // The error will now be caught and handled gracefully by api.js!
+  const response = await api.post('/api/auth/refresh-token');
 
-    if (response.data.accessToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-    }
-
-    return response.data.accessToken;
-  } catch (error) {
-    await logout();
-    throw error;
+  if (response.data.accessToken) {
+    localStorage.setItem('accessToken', response.data.accessToken);
   }
+
+  return response.data.accessToken;
 };
