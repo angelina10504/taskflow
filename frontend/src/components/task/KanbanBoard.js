@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Button, Text } from '@chakra-ui/react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   PointerSensor,
   useSensor,
   useSensors,
@@ -94,6 +95,16 @@ const KanbanBoard = ({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
+  // Track the status the task had before this drag started
+  const activeTaskOriginalStatus = useRef(null);
+
+  // pointerWithin correctly handles empty columns; fall back to rectIntersection
+  const collisionDetection = useCallback((args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    return rectIntersection(args);
+  }, []);
+
   const addNotif = (name, title, status) => {
     setMoveNotifs((prev) => [
       { id: Date.now() + Math.random(), name, title, status },
@@ -126,14 +137,13 @@ const KanbanBoard = ({
   const handleDragStart = (event) => {
     const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task);
+    activeTaskOriginalStatus.current = task?.status ?? null;
   };
 
-  const handleDragEnd = async (event) => {
+  // Optimistically move the card into the destination column while dragging
+  const handleDragOver = (event) => {
     const { active, over } = event;
-    setActiveTask(null);
     if (!over) return;
-
-    const draggedTask = tasks.find((t) => t._id === active.id);
 
     let overStatus;
     if (COLUMNS.includes(over.id)) {
@@ -143,20 +153,48 @@ const KanbanBoard = ({
       overStatus = overTask?.status;
     }
 
-    if (!overStatus || draggedTask.status === overStatus) return;
+    if (!overStatus) return;
+
+    setTasks((prev) => {
+      const current = prev.find((t) => t._id === active.id);
+      if (!current || current.status === overStatus) return prev;
+      return prev.map((t) => (t._id === active.id ? { ...t, status: overStatus } : t));
+    });
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    const originalStatus = activeTaskOriginalStatus.current;
+    activeTaskOriginalStatus.current = null;
+
+    const draggedTask = tasks.find((t) => t._id === active.id);
+    if (!draggedTask) return;
+
+    // Dropped outside any valid target — revert the optimistic update
+    if (!over) {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === active.id ? { ...t, status: originalStatus } : t))
+      );
+      return;
+    }
+
+    const newStatus = draggedTask.status; // already updated by handleDragOver
+
+    // No column change — nothing to persist
+    if (newStatus === originalStatus) return;
 
     try {
-      const response = await taskService.updateTaskStatus(draggedTask._id, overStatus, 0);
+      const response = await taskService.updateTaskStatus(draggedTask._id, newStatus, 0);
       const updatedTask = response.task;
 
       const updatedTasks = tasks.map((t) => (t._id === draggedTask._id ? updatedTask : t));
       setTasks(updatedTasks);
       onTasksUpdate?.(updatedTasks);
 
-      // Show notification for own move
-      addNotif('You', updatedTask.title, STATUS_LABELS[overStatus]);
+      addNotif('You', updatedTask.title, STATUS_LABELS[newStatus]);
 
-      // Broadcast to teammates
       if (socket && currentUser) {
         socket.emit('task-moved', {
           projectId,
@@ -165,6 +203,10 @@ const KanbanBoard = ({
         });
       }
     } catch (error) {
+      // Revert optimistic update on API failure
+      setTasks((prev) =>
+        prev.map((t) => (t._id === active.id ? { ...t, status: originalStatus } : t))
+      );
       toaster.create({
         title: 'Error',
         description: 'Failed to move task',
@@ -325,8 +367,9 @@ const KanbanBoard = ({
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <Box flex={1} display="flex" gap={4} overflow="hidden">
