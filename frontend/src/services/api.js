@@ -4,6 +4,7 @@ import { getAccessToken, refreshAccessToken, logout } from './authService';
 // Create axios instance
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
+  withCredentials: true, // sends the refreshToken HTTP-only cookie automatically
   headers: {
     'Content-Type': 'application/json',
   },
@@ -39,7 +40,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, logout user
-        logout();
+        await logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
