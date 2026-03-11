@@ -2,8 +2,8 @@
 
 A full-stack, high-performance project management application inspired by Trello and Notion. TaskFlow features a multi-tenant workspace architecture, real-time Kanban boards, and a robust JWT-based authentication system.
 
-*(Add your main project screenshot here)*
-![TaskFlow Kanban Board](./screenshots/main-board.png)
+<img width="1470" height="800" alt="image" src="https://github.com/user-attachments/assets/c2d75dde-26f1-40e4-a9ab-85794f6cedf2" />
+
 
 ---
 
