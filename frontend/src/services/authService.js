@@ -5,13 +5,11 @@ export const register = async (userData) => {
   try {
     const response = await api.post('/api/auth/register', userData);
     
-    // Store tokens in localStorage
     if (response.data.accessToken) {
       localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-    
+
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Registration failed' };
@@ -23,13 +21,11 @@ export const login = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
     
-    // Store tokens in localStorage
     if (response.data.accessToken) {
       localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-    
+
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Login failed' };
@@ -43,7 +39,6 @@ export const googleLogin = async (credential) => {
 
     if (response.data.accessToken) {
       localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
@@ -53,10 +48,14 @@ export const googleLogin = async (credential) => {
   }
 };
 
-// Logout user
-export const logout = () => {
+// Logout user — clears local storage and asks backend to clear the cookie
+export const logout = async () => {
+  try {
+    await api.post('/api/auth/logout');
+  } catch {
+    // Best-effort — clear local state regardless
+  }
   localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
 };
 
@@ -116,19 +115,18 @@ export const uploadAvatar = async (file) => {
   }
 };
 
-// Refresh access token
+// Refresh access token — cookie is sent automatically via withCredentials
 export const refreshAccessToken = async () => {
   try {
-    const refreshToken = localStorage.getItem('refreshToken');
-    const response = await api.post('/api/auth/refresh-token', { refreshToken });
-    
+    const response = await api.post('/api/auth/refresh-token');
+
     if (response.data.accessToken) {
       localStorage.setItem('accessToken', response.data.accessToken);
     }
-    
+
     return response.data.accessToken;
   } catch (error) {
-    logout();
+    await logout();
     throw error;
   }
 };

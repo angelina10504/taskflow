@@ -80,8 +80,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function - removed navigate, let components handle it
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
   };
 

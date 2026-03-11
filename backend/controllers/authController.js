@@ -7,6 +7,13 @@ const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -34,6 +41,8 @@ const register = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -48,7 +57,6 @@ const register = async (req, res) => {
         timezone: user.timezone,
       },
       accessToken,
-      refreshToken,
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -99,6 +107,8 @@ const login = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -113,7 +123,6 @@ const login = async (req, res) => {
         timezone: user.timezone,
       },
       accessToken,
-      refreshToken,
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -151,9 +160,9 @@ const getMe = async (req, res) => {
 // @access  Public
 const refreshToken = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const token = req.cookies.refreshToken;
 
-    if (!refreshToken) {
+    if (!token) {
       return res.status(400).json({
         success: false,
         message: 'Refresh token is required',
@@ -161,7 +170,7 @@ const refreshToken = async (req, res) => {
     }
 
     const { verifyRefreshToken } = require('../utils/generateToken');
-    const decoded = verifyRefreshToken(refreshToken);
+    const decoded = verifyRefreshToken(token);
 
     if (!decoded) {
       return res.status(401).json({
@@ -227,6 +236,8 @@ const googleAuth = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     res.status(200).json({
       success: true,
       message: 'Google login successful',
@@ -241,7 +252,6 @@ const googleAuth = async (req, res) => {
         timezone: user.timezone,
       },
       accessToken,
-      refreshToken,
     });
   } catch (error) {
     console.error('Google auth error:', error);
@@ -326,6 +336,18 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
+// @desc    Logout — clear the refresh token cookie
+// @route   POST /api/auth/logout
+// @access  Public
+const logout = (_req, res) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  });
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+};
+
 module.exports = {
   register,
   login,
@@ -334,4 +356,5 @@ module.exports = {
   googleAuth,
   updateMe,
   uploadAvatar,
+  logout,
 };

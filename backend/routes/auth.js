@@ -7,6 +7,7 @@ const {
   googleAuth,
   updateMe,
   uploadAvatar,
+  logout,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -18,6 +19,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/google', googleAuth);
 router.post('/refresh-token', refreshToken);
+router.post('/logout', logout);
 
 // Private routes (require authentication)
 router.get('/me', protect, getMe);
