@@ -18,6 +18,7 @@ connectDB();
 
 // Initialize Express app
 const app = express();
+app.set('trust proxy', 1); // Required for Render's reverse proxy to honour secure cookies
 
 // Middleware
 const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:3000'].filter(Boolean);
