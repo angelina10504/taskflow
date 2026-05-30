@@ -58,6 +58,8 @@ try {
   console.log('✅ Project routes loaded');
   app.use('/api/tasks', require('./routes/tasks'));
   console.log('✅ Task routes loaded');
+  app.use('/api/ai', require('./routes/ai'));
+  console.log('✅ AI routes loaded');
 } catch (error) {
   console.error('❌ Error loading routes:', error);
   process.exit(1);

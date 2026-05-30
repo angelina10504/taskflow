@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+
+# Ephemeral uploads (Multer temp dir)
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store

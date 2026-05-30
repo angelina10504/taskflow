@@ -7,11 +7,17 @@ const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: true,
-  sameSite: 'none',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  // In production the frontend and backend are on different HTTPS domains, so the
+  // cookie must be cross-site: sameSite 'none' + secure. Browsers refuse to store a
+  // `secure` cookie over http://localhost, so in development we use lax + non-secure
+  // (localhost:3000 → localhost:5001 is same-site across ports, so lax is sent).
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
 // @desc    Register new user
@@ -339,11 +345,11 @@ const uploadAvatar = async (req, res) => {
 // @desc    Logout — clear the refresh token cookie
 // @route   POST /api/auth/logout
 // @access  Public
-const logout = (_req, res) => {
+const logout = (req, res) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };

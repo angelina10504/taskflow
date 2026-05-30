@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import KanbanBoard from '../components/task/KanbanBoard';
+import VelocityInsights from '../components/ai/VelocityInsights';
+import CommandBoard from '../components/ai/CommandBoard';
 import * as taskService from '../services/taskService';
-import { Box, Heading, Text, Spinner, Center } from '@chakra-ui/react';
+import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
 import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +22,14 @@ const ProjectDetail = () => {
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [boardKey, setBoardKey] = useState(0);
+
+  const handleCommandTasks = (updatedTasks) => {
+    setTasks(updatedTasks);
+    setBoardKey((k) => k + 1); // remount the board so it reflects bulk changes
+  };
 
   useEffect(() => { fetchProject(); }, [id]);
 
@@ -97,6 +107,27 @@ const ProjectDetail = () => {
               📦 Archived
             </Box>
           )}
+          <Box ml="auto" display="flex" gap={2}>
+            <Button
+              size="sm"
+              onClick={() => setCommandOpen(true)}
+              variant="outline"
+              borderColor="purple.400"
+              color={textPrimary}
+              _hover={{ bg: 'rgba(168,85,247,0.12)' }}
+            >
+              ⚡ Command
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setInsightsOpen(true)}
+              style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+              color="white"
+              _hover={{ opacity: 0.9 }}
+            >
+              ✨ AI Insights
+            </Button>
+          </Box>
         </Box>
         {project.description && (
           <Text color={textSecondary} fontSize="sm" mb={2}>{project.description}</Text>
@@ -128,6 +159,7 @@ const ProjectDetail = () => {
         ) : (
           <Box flex={1} overflow="hidden">
             <KanbanBoard
+              key={boardKey}
               projectId={id}
               workspaceId={project.workspace._id || project.workspace}
               initialTasks={tasks}
@@ -140,6 +172,19 @@ const ProjectDetail = () => {
           </Box>
         )}
       </Box>
+
+      <VelocityInsights
+        isOpen={insightsOpen}
+        onClose={() => setInsightsOpen(false)}
+        projectId={id}
+      />
+
+      <CommandBoard
+        isOpen={commandOpen}
+        onClose={() => setCommandOpen(false)}
+        projectId={id}
+        onTasksChanged={handleCommandTasks}
+      />
     </Box>
   );
 };
