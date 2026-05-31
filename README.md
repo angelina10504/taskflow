@@ -1,6 +1,6 @@
 # 📝 TaskFlow
 
-A full-stack, high-performance project management application inspired by Trello and Notion. TaskFlow features a multi-tenant workspace architecture, real-time Kanban boards, and a robust JWT-based authentication system.
+A full-stack, high-performance project management application inspired by Trello and Notion. TaskFlow features a multi-tenant workspace architecture, real-time Kanban boards, a robust JWT-based authentication system, and an **AI layer** that turns raw board data into forecasts and lets you command the board in plain English.
 
 <img width="1470" height="800" alt="image" src="https://github.com/user-attachments/assets/c2d75dde-26f1-40e4-a9ab-85794f6cedf2" />
 
@@ -9,6 +9,8 @@ A full-stack, high-performance project management application inspired by Trello
 
 ## 🚀 Key Features
 
+* **🤖 AI Velocity Intelligence:** One click turns your board into a forecast — throughput, cycle time, overdue/stale detection, per-assignee workload, and a *projected finish date vs. deadline*, with an AI-written risk verdict, insights, and recommendations.
+* **⚡ AI "Command the Board":** A chat box that *acts*, not just answers. Type natural-language commands (e.g. *"move everything in review to done"*, *"assign all unassigned tasks to me"*, *"create a task 'Write release notes' due Friday"*) and an AI agent executes them via tool-use against your tasks.
 * **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer).
 * **Real-time Kanban:** Interactive board using `@dnd-kit` for smooth drag-and-drop. Task movements are synced across all active users in a project via **Socket.IO**.
 * **Smart Tasks:** Track priorities (Low to Urgent), assignees, labels, and estimated time. Automatic `completedAt` timestamps are generated when moved to "Done."
@@ -18,13 +20,32 @@ A full-stack, high-performance project management application inspired by Trello
 
 ---
 
+## 🤖 AI Features (deep dive)
+
+TaskFlow's AI is **provider-agnostic** — it talks to any OpenAI-compatible endpoint (Groq, Google Gemini, OpenRouter, local Ollama, …) configured purely through environment variables, so you can switch models without touching code. The API key lives only on the backend and is never exposed to the client.
+
+### ✨ Velocity Intelligence — `GET /api/ai/projects/:projectId/velocity`
+All hard metrics are computed **deterministically in code** (the LLM never does math). The model only *interprets* the numbers, so figures are always trustworthy.
+* **Computed:** completion rate, weekly throughput, average/median cycle time, overdue tasks, stale in-progress tasks (5+ days untouched), estimate coverage, per-assignee workload, and a deadline projection (`projectedFinish` vs. `project.deadline`).
+* **AI narrative:** a structured JSON verdict — `riskLevel` (on_track / at_risk / off_track), a headline, summary, insights, and concrete recommendations.
+* **Graceful fallback:** with no API key set, the endpoint still returns the full computed metrics plus a rule-based summary (no crash).
+
+### ⚡ Command the Board — `POST /api/ai/projects/:projectId/command`
+An agentic tool-use loop maps natural language to real board mutations.
+* **Tools:** `update_task`, `create_task`, `delete_task` — each scoped and validated to the project, reusing the same position/`completedAt` logic as the normal task API.
+* **Context-aware:** the current board snapshot + workspace member list are passed in, so the agent resolves references like *"me"*, a teammate's name, *"urgent tasks"*, or *"everything in review"*.
+* **Safe by design:** deletes only happen when explicitly requested; the response includes a plain-language summary and an action log of exactly what changed, then the board refreshes in place.
+
+---
+
 ## 🛠️ Tech Stack
 
 | Layer | Technologies |
 | :--- | :--- |
 | **Frontend** | React 19, React Router 7, Chakra UI 3 |
 | **Backend** | Node.js, Express 5, MongoDB + Mongoose, Socket.IO |
-| **Authentication** | JWT (15m Access + 7d Refresh), bcryptjs (10 rounds) |
+| **AI** | OpenAI SDK against any OpenAI-compatible endpoint (default: **Groq** / Llama 3.3 70B); structured JSON output + tool-use |
+| **Authentication** | JWT (15m Access + 7d Refresh), bcryptjs (10 rounds), Google OAuth |
 | **State & HTTP** | Context API, Axios (with interceptors) |
 | **Drag & Drop** | `@dnd-kit` |
 | **Deployment** | Railway/Render (Backend), Vercel/Netlify (Frontend) |
@@ -34,16 +55,20 @@ A full-stack, high-performance project management application inspired by Trello
 ## 🏗️ Architecture & Request Flow
 
 ### 1. Silent Authentication & Interceptors
-TaskFlow uses a seamless token rotation strategy. Users receive a short-lived **Access Token (15m)** and a long-lived **Refresh Token (7d)** stored in `localStorage`. 
+TaskFlow uses a seamless token rotation strategy. Users receive a short-lived **Access Token (15m)** and a long-lived **Refresh Token (7d)** stored as an HttpOnly cookie.
 * All API calls route through an Axios instance.
 * If a request receives a `401 Unauthorized`, the interceptor automatically pauses the queue, hits `POST /api/auth/refresh-token`, updates the tokens, and retries the original request without user interruption.
+* Cookie flags are environment-aware: `secure` + `sameSite: 'none'` in production (cross-site HTTPS), `sameSite: 'lax'` in development (so login works over `http://localhost`).
 
 ### 2. Real-time Collaboration (Socket.IO)
-When a user opens a project, the client joins a specific Socket.IO room partitioned by `projectId`. 
+When a user opens a project, the client joins a specific Socket.IO room partitioned by `projectId`.
 * **Optimized for Cloud:** Connections use `pingTimeout: 60000` and `pingInterval: 25000` to keep the connection alive on ephemeral hosts like Render/Railway.
 * **Auto-Reconnect:** The frontend is configured with `reconnection: true` and a `1000ms` delay to handle network drops gracefully.
 
-### 3. Database Entity Relationships
+### 3. AI Layer
+A single, provider-agnostic `aiController` powers both AI features. Hard metrics are computed in `utils/velocityStats.js` (deterministic), then passed to the model for interpretation (Velocity) or to an agentic tool-use loop (Command). Cloudinary is lazy-loaded so heavy/optional dependencies never block server startup.
+
+### 4. Database Entity Relationships
 The MongoDB schema is designed for multi-tenant scalability:
 * **User** belongs to many **Workspaces** (via `members` array).
 * **Workspace** contains **Projects** and manages Role-Based Access Control (`owner`, `admin`, `member`, `viewer`).
@@ -61,6 +86,12 @@ The MongoDB schema is designed for multi-tenant scalability:
 | POST | `/login` | Authenticate and receive JWTs |
 | POST | `/refresh-token` | Exchange refresh token for new access token |
 | GET | `/me` | Get current authenticated user profile |
+
+### 🤖 AI (`/api/ai`) - *Protected*
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| GET | `/projects/:projectId/velocity` | Velocity & estimate intelligence (computed metrics + AI verdict) |
+| POST | `/projects/:projectId/command` | Execute a natural-language command against the board (agentic tool-use) |
 
 ### 🏢 Workspaces (`/api/workspaces`) - *Protected*
 | Method | Endpoint | Description |
@@ -80,14 +111,59 @@ The MongoDB schema is designed for multi-tenant scalability:
 
 ## ⚙️ Environment Setup
 
-To run this project locally, create a `.env` file in the `/backend` directory:
+Create a `.env` file in the `/backend` directory (it is gitignored — never commit it):
 
 ```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_ACCESS_SECRET=your_access_secret_key
+NODE_ENV=development
+PORT=5001
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_access_secret_key
+JWT_EXPIRE=15m
 JWT_REFRESH_SECRET=your_refresh_secret_key
+JWT_REFRESH_EXPIRE=7d
+CLIENT_URL=http://localhost:3000
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Cloudinary (avatar uploads)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
-CLIENT_URL=http://localhost:3000
+
+# AI provider (OpenAI-compatible). Default = Groq.
+# Get a free key at https://console.groq.com/keys
+AI_API_KEY=your_groq_api_key      # e.g. gsk_...
+AI_MODEL=llama-3.3-70b-versatile
+AI_BASE_URL=https://api.groq.com/openai/v1
+# To switch providers, change the three vars above, e.g.:
+#   Gemini: AI_MODEL=gemini-2.0-flash  AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+#   Ollama: AI_MODEL=llama3.1          AI_BASE_URL=http://localhost:11434/v1
+```
+
+The frontend reads its API/Socket URLs from `frontend/.env` (production) / `frontend/.env.local` (local), e.g. `REACT_APP_API_URL=http://localhost:5001`.
+
+> **Deploying?** Because `.env` is gitignored, set these same variables in your host's dashboard (Render/Railway → Environment Variables). The AI features won't work in production until `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` are set there.
+
+---
+
+## ▶️ Running Locally
+
+```bash
+# Backend
+cd backend
+npm install
+npm start          # http://localhost:5001
+
+# Frontend (in a second terminal)
+cd frontend
+npm install
+npm start          # http://localhost:3000
+```
+
+---
+
+## 👩‍💻 Author
+
+Angelina Gupta
