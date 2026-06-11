@@ -1,55 +1,49 @@
 import React from 'react';
 import { Box, Text, Heading } from '@chakra-ui/react';
+import { LuCalendar, LuLink } from 'react-icons/lu';
 import useColors from '../../hooks/useColors';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
-const PRIORITY_COLORS = {
-  low: 'gray.500',
-  medium: 'blue.500',
-  high: 'orange.500',
-  urgent: 'red.500',
-};
-
-const PRIORITY_BORDER = {
-  low: '#d1d5db',
-  medium: '#facc15',
-  high: '#fb923c',
-  urgent: '#ef4444',
-};
-
-const PRIORITY_LABELS = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
+// One quiet dot per priority; only "urgent" earns a filled pill.
+const PRIORITY = {
+  low: { label: 'Low', dot: '#d1d5db' },
+  medium: { label: 'Medium', dot: '#9ca3af' },
+  high: { label: 'High', dot: '#f59e0b' },
+  urgent: { label: 'Urgent', dot: '#ef4444' },
 };
 
 const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
-  const { dark, cardBg, border, textSecondary, textMuted } = useColors();
+  const { dark, cardBg, border, hoverBg, textPrimary, textSecondary, textMuted } = useColors();
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+  const priority = PRIORITY[task.priority] || PRIORITY.medium;
+  const isUrgent = task.priority === 'urgent';
 
   return (
     <Box
       bg={cardBg}
       p={4}
-      borderRadius="md"
-      boxShadow="sm"
+      borderRadius="xl"
       cursor="pointer"
-      transition="all 0.2s"
+      transition="border-color 0.15s ease, transform 0.15s ease"
       border="1px solid"
       borderColor={border}
-      borderLeft="4px solid"
-      style={{ borderLeftColor: PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium }}
-      _hover={{ boxShadow: 'md' }}
+      _hover={{ borderColor: '#818cf8', transform: 'translateY(-1px)' }}
       onClick={onClick}
     >
-      <Heading size="sm" mb={2} noOfLines={2} color={dark ? 'gray.100' : 'gray.800'}>
+      <Heading
+        size="sm"
+        fontWeight="600"
+        letterSpacing="-0.01em"
+        mb={task.description ? 1 : 3}
+        noOfLines={2}
+        color={textPrimary}
+      >
         {task.title}
       </Heading>
 
       {task.description && (
-        <Text fontSize="sm" color={textSecondary} noOfLines={2} mb={2}>
+        <Text fontSize="sm" color={textSecondary} noOfLines={1} mb={3}>
           {task.description}
         </Text>
       )}
@@ -66,7 +60,7 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
               color: '#818cf8',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '5px',
               maxWidth: '100%',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -74,64 +68,100 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
               textDecoration: 'none',
             }}
           >
-            🔗 {task.link}
+            <LuLink size={12} style={{ flexShrink: 0 }} />
+            {task.link.replace(/^https?:\/\//, '')}
           </a>
         </Box>
       )}
 
-      <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-        {/* Priority Badge */}
-        <Box
-          px={2} py={1}
-          bg={dark ? '#1e2535' : `${PRIORITY_COLORS[task.priority]}.50`}
-          color={PRIORITY_COLORS[task.priority]}
-          borderRadius="md" fontSize="xs" fontWeight="medium"
-        >
-          {PRIORITY_LABELS[task.priority]}
-        </Box>
-
-        {/* Due Date */}
-        {task.dueDate && (
+      <Box display="flex" alignItems="center" gap={3} flexWrap="wrap">
+        {/* Priority */}
+        {isUrgent ? (
           <Box
-            px={2} py={1}
-            bg={isOverdue ? (dark ? '#3b1212' : 'red.50') : (dark ? '#1e2535' : 'gray.50')}
-            color={isOverdue ? 'red.400' : textSecondary}
-            borderRadius="md" fontSize="xs"
+            display="inline-flex"
+            alignItems="center"
+            gap="5px"
+            px={2}
+            py={0.5}
+            bg={dark ? '#3b1212' : 'red.50'}
+            color={dark ? 'red.300' : 'red.600'}
+            borderRadius="full"
+            fontSize="xs"
+            fontWeight="medium"
           >
-            📅 {new Date(task.dueDate).toLocaleDateString()}
+            <Box w="5px" h="5px" borderRadius="full" bg={priority.dot} />
+            {priority.label}
+          </Box>
+        ) : (
+          <Box display="inline-flex" alignItems="center" gap="6px" fontSize="xs" color={textSecondary}>
+            <Box w="6px" h="6px" borderRadius="full" bg={priority.dot} />
+            {priority.label}
           </Box>
         )}
 
-        {/* Assigned Users */}
+        {/* Due date */}
+        {task.dueDate && (
+          <Box
+            display="inline-flex"
+            alignItems="center"
+            gap="4px"
+            fontSize="xs"
+            color={isOverdue ? (dark ? 'red.300' : 'red.500') : textMuted}
+            fontWeight={isOverdue ? 'medium' : 'normal'}
+          >
+            <LuCalendar size={12} />
+            {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          </Box>
+        )}
+
+        {/* Assigned users — pinned right */}
         {task.assignedTo && task.assignedTo.length > 0 && (
-          <Box display="flex" gap={1}>
+          <Box display="flex" gap={1} ml="auto">
             {task.assignedTo.slice(0, 3).map((user) => {
-              const initials = user.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+              const initials =
+                user.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
               const hasRealAvatar = user.avatar && !user.avatar.includes('ui-avatars.com');
               const avatarSrc = hasRealAvatar
-                ? user.avatar.startsWith('/uploads/') ? `${API_URL}${user.avatar}` : user.avatar
+                ? user.avatar.startsWith('/uploads/')
+                  ? `${API_URL}${user.avatar}`
+                  : user.avatar
                 : null;
               return (
                 <Box
                   key={user._id}
-                  w="24px" h="24px" borderRadius="full" overflow="hidden"
-                  display="flex" alignItems="center" justifyContent="center"
-                  fontSize="10px" fontWeight="bold" color="white"
+                  w="22px"
+                  h="22px"
+                  borderRadius="full"
+                  overflow="hidden"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize="9px"
+                  fontWeight="bold"
+                  color="white"
+                  title={user.name}
                   style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
                 >
-                  {avatarSrc
-                    ? <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
-                    : initials}
+                  {avatarSrc ? (
+                    <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
+                  ) : (
+                    initials
+                  )}
                 </Box>
               );
             })}
             {task.assignedTo.length > 3 && (
               <Box
-                w="24px" h="24px" borderRadius="full"
-                bg={dark ? '#2a3244' : 'gray.300'}
-                color={dark ? 'gray.300' : 'gray.700'}
-                display="flex" alignItems="center" justifyContent="center"
-                fontSize="10px" fontWeight="bold"
+                w="22px"
+                h="22px"
+                borderRadius="full"
+                bg={hoverBg}
+                color={textSecondary}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                fontSize="9px"
+                fontWeight="bold"
               >
                 +{task.assignedTo.length - 3}
               </Box>
@@ -140,29 +170,27 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
         )}
       </Box>
 
-      {/* Labels */}
+      {/* Labels — neutral chips */}
       {task.labels && task.labels.length > 0 && (
         <Box display="flex" gap={1} mt={2} flexWrap="wrap">
-          {task.labels.map((label, index) => (
+          {task.labels.slice(0, 4).map((label, index) => (
             <Box
-              key={index} px={2} py={0.5}
-              bg={dark ? '#1e3a5f' : 'blue.100'}
-              color={dark ? '#93c5fd' : 'blue.700'}
-              borderRadius="sm" fontSize="xs"
+              key={index}
+              px={2}
+              py={0.5}
+              bg={hoverBg}
+              color={textSecondary}
+              borderRadius="full"
+              fontSize="xs"
             >
               {label}
             </Box>
           ))}
-        </Box>
-      )}
-
-      {/* Created date / creator */}
-      {task.createdAt && (
-        <Box display="flex" justifyContent="flex-end" mt={2}>
-          <Text fontSize="xs" color={textMuted}>
-            {workspaceMemberCount > 1 && task.createdBy?.name ? `${task.createdBy.name} · ` : ''}
-            {new Date(task.createdAt).toLocaleDateString()}
-          </Text>
+          {task.labels.length > 4 && (
+            <Text fontSize="xs" color={textMuted} alignSelf="center">
+              +{task.labels.length - 4}
+            </Text>
+          )}
         </Box>
       )}
     </Box>

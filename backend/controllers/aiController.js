@@ -1,25 +1,10 @@
-const OpenAI = require('openai');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const Workspace = require('../models/Workspace');
+const HealthReport = require('../models/HealthReport');
 const { computeVelocityStats } = require('../utils/velocityStats');
-
-// Provider-agnostic: any OpenAI-compatible endpoint works (Gemini, Groq, OpenRouter,
-// Cerebras, local Ollama, …). Defaults target Google Gemini's OpenAI-compatible API.
-const MODEL = process.env.AI_MODEL || 'gemini-2.0-flash';
-const BASE_URL = process.env.AI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/';
-// Treat any unset key or "your_..._here" style placeholder as "no key configured"
-// so the endpoints fall back to computed metrics instead of erroring.
-const isPlaceholderKey = (k) => !k || /^your_.*_here$/.test(k.trim());
-
-let client = null;
-const getClient = () => {
-  if (client) return client;
-  const apiKey = process.env.AI_API_KEY;
-  if (isPlaceholderKey(apiKey)) return null;
-  client = new OpenAI({ apiKey, baseURL: BASE_URL });
-  return client;
-};
+const { getClient, MODEL } = require('../utils/aiClient');
+const { scanProject } = require('../utils/riskRadar');
 
 const checkWorkspaceMembership = async (workspaceId, userId) => {
   const workspace = await Workspace.findById(workspaceId);
@@ -444,4 +429,52 @@ const commandBoard = async (req, res) => {
   }
 };
 
-module.exports = { getVelocityInsights, commandBoard };
+// ---------------------------------------------------------------------------
+// Risk Radar (proactive project health)
+// ---------------------------------------------------------------------------
+
+// @desc    Latest health report for a project (null if never scanned)
+// @route   GET /api/ai/projects/:projectId/health
+// @access  Private
+const getProjectHealth = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const report = await HealthReport.findOne({ project: projectId }).sort('-createdAt');
+
+    res.status(200).json({ success: true, report });
+  } catch (error) {
+    console.error('Get project health error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Run a health scan now (also broadcasts to the project's socket room)
+// @route   POST /api/ai/projects/:projectId/health/scan
+// @access  Private
+const scanProjectHealth = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const report = await scanProject(projectId, req.app.get('io'), 'manual');
+
+    res.status(200).json({ success: true, report });
+  } catch (error) {
+    console.error('Scan project health error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { getVelocityInsights, commandBoard, getProjectHealth, scanProjectHealth };

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Button, Input, Heading, Text, Spinner } from '@chakra-ui/react';
+import { LuZap } from 'react-icons/lu';
 import {
   DialogRoot,
   DialogContent,
@@ -59,7 +60,9 @@ const CommandBoard = ({ isOpen, onClose, projectId, onTasksChanged }) => {
       <DialogContent bg={cardBg} color={textPrimary} maxW="640px">
         <DialogHeader borderBottomColor={border}>
           <Box display="flex" alignItems="center" gap={2}>
-            <Text fontSize="xl">⚡</Text>
+            <Box color="#a855f7" display="flex" alignItems="center">
+              <LuZap size={20} />
+            </Box>
             <Box>
               <Heading size="lg" color={textPrimary}>Command the Board</Heading>
               <Text fontSize="xs" color={textMuted}>Tell the assistant what to change in plain language.</Text>
