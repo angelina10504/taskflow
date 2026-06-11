@@ -1,8 +1,14 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 
+const fontStack = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif`;
+
 const customConfig = defineConfig({
   theme: {
     tokens: {
+      fonts: {
+        heading: { value: fontStack },
+        body: { value: fontStack },
+      },
       colors: {
         brand: {
           50: { value: '#eef2ff' },

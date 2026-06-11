@@ -3,21 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Button, Heading, Text, SimpleGrid } from '@chakra-ui/react';
 import { useTheme } from 'next-themes';
 import { FiSun, FiMoon } from 'react-icons/fi';
+import { LuKanban, LuFolders, LuListChecks, LuUsers } from 'react-icons/lu';
 import useColors from '../hooks/useColors';
 
 const features = [
   {
-    icon: '🗂️',
+    icon: LuFolders,
     title: 'Workspaces',
     description: 'Organise work into dedicated spaces for each team or project.',
   },
   {
-    icon: '✅',
+    icon: LuListChecks,
     title: 'Task Tracking',
     description: 'Create, assign, and track tasks with priorities and due dates.',
   },
   {
-    icon: '👥',
+    icon: LuUsers,
     title: 'Team Collaboration',
     description: 'Invite members, set roles, and work together in real time.',
   },
@@ -44,16 +45,23 @@ const Landing = () => {
         justifyContent="space-between"
         transition="background 0.2s"
       >
-        <Heading
-          size="lg"
-          style={{
-            background: 'linear-gradient(to right, #6366f1, #a855f7)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          🚀 TaskFlow
-        </Heading>
+        <Box display="flex" alignItems="center" gap={2.5}>
+          <Box
+            w="32px"
+            h="32px"
+            borderRadius="lg"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            color="white"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}
+          >
+            <LuKanban size={18} />
+          </Box>
+          <Heading size="lg" fontWeight="600" letterSpacing="-0.02em" color={textPrimary}>
+            TaskFlow
+          </Heading>
+        </Box>
 
         <Box display="flex" alignItems="center" gap={3}>
           {/* Theme toggle */}
@@ -99,13 +107,28 @@ const Landing = () => {
       </Box>
 
       {/* Hero */}
-      <Box
-        textAlign="center"
-        py={{ base: 20, md: 32 }}
-        px={4}
-        maxW="3xl"
-        mx="auto"
-      >
+      <Box position="relative" overflow="hidden">
+        {/* Soft brand glow behind the hero */}
+        <Box
+          position="absolute"
+          top="-120px"
+          left="50%"
+          transform="translateX(-50%)"
+          w="720px"
+          h="480px"
+          pointerEvents="none"
+          style={{
+            background: `radial-gradient(ellipse at center, rgba(99,102,241,${dark ? 0.18 : 0.1}) 0%, rgba(168,85,247,${dark ? 0.08 : 0.05}) 45%, transparent 70%)`,
+          }}
+        />
+        <Box
+          position="relative"
+          textAlign="center"
+          py={{ base: 20, md: 32 }}
+          px={4}
+          maxW="3xl"
+          mx="auto"
+        >
         <Text
           fontSize="sm"
           fontWeight="semibold"
@@ -119,7 +142,8 @@ const Landing = () => {
         <Heading
           size={{ base: '3xl', md: '5xl' }}
           mb={6}
-          lineHeight="1.15"
+          lineHeight="1.12"
+          letterSpacing="-0.03em"
           style={{
             background: 'linear-gradient(to right, #6366f1, #a855f7)',
             WebkitBackgroundClip: 'text',
@@ -159,6 +183,7 @@ const Landing = () => {
             Sign In
           </Button>
         </Box>
+        </Box>
       </Box>
 
       {/* Features */}
@@ -173,10 +198,26 @@ const Landing = () => {
               border="1px solid"
               borderColor={border}
               textAlign="center"
-              transition="background 0.2s"
+              transition="border-color 0.2s, background 0.2s"
+              _hover={{ borderColor: '#818cf8' }}
             >
-              <Text fontSize="4xl" mb={4}>{f.icon}</Text>
-              <Heading size="md" mb={2} color={textPrimary}>{f.title}</Heading>
+              <Box
+                w="44px"
+                h="44px"
+                mx="auto"
+                mb={4}
+                borderRadius="xl"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                color={dark ? '#a5b4fc' : '#4f46e5'}
+                bg={dark ? 'rgba(99,102,241,0.14)' : '#eef2ff'}
+              >
+                <f.icon size={22} />
+              </Box>
+              <Heading size="md" mb={2} fontWeight="600" letterSpacing="-0.01em" color={textPrimary}>
+                {f.title}
+              </Heading>
               <Text color={textSecondary} fontSize="sm">{f.description}</Text>
             </Box>
           ))}
