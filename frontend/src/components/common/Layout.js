@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { useAuth } from '../../context/AuthContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
+import { LuKanban, LuHouse, LuFolders, LuLogOut } from 'react-icons/lu';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -38,8 +39,8 @@ const Layout = ({ children }) => {
   };
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '🏠' },
-    { label: 'Workspaces', path: '/workspaces', icon: '📁' },
+    { label: 'Dashboard', path: '/dashboard', icon: LuHouse },
+    { label: 'Workspaces', path: '/workspaces', icon: LuFolders },
   ];
 
   // Color aliases
@@ -78,19 +79,30 @@ const Layout = ({ children }) => {
           alignItems="center"
           justifyContent="space-between"
         >
-          <Text
-            fontSize="xl"
-            fontWeight="bold"
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={2}
             cursor="pointer"
             onClick={() => navigate('/workspaces')}
-            style={{
-              background: 'linear-gradient(to right, #6366f1, #a855f7)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
           >
-            🚀 TaskFlow
-          </Text>
+            <Box
+              w="28px"
+              h="28px"
+              borderRadius="lg"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              color="white"
+              flexShrink={0}
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}
+            >
+              <LuKanban size={16} />
+            </Box>
+            <Text fontSize="lg" fontWeight="600" letterSpacing="-0.02em" color={textPrimary}>
+              TaskFlow
+            </Text>
+          </Box>
 
           {/* Theme toggle */}
           <Box
@@ -138,7 +150,7 @@ const Layout = ({ children }) => {
               }}
               onClick={() => navigate(item.path)}
             >
-              <Text fontSize="lg">{item.icon}</Text>
+              <item.icon size={16} />
               <Text fontSize="sm">{item.label}</Text>
             </Box>
           ))}
@@ -218,7 +230,7 @@ const Layout = ({ children }) => {
             _hover={{ bg: dark ? '#3d1f1f' : 'red.50' }}
             onClick={handleLogout}
           >
-            <Text>🚪</Text>
+            <LuLogOut size={15} />
             <Text>Logout</Text>
           </Box>
         </Box>
