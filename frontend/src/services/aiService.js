@@ -19,3 +19,23 @@ export const sendCommand = async (projectId, message) => {
     throw error.response?.data || { message: 'Command failed' };
   }
 };
+
+// Get the latest Risk Radar health report for a project (report may be null)
+export const getHealthReport = async (projectId) => {
+  try {
+    const response = await api.get(`/api/ai/projects/${projectId}/health`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to load health report' };
+  }
+};
+
+// Run a Risk Radar scan now
+export const runHealthScan = async (projectId) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/health/scan`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Health scan failed' };
+  }
+};

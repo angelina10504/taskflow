@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { LuPlus, LuRefreshCw } from 'react-icons/lu';
 import KanbanColumn from './KanbanColumn';
 import TaskCard from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
@@ -29,6 +30,8 @@ const STATUS_LABELS = {
 const API_URL = process.env.REACT_APP_API_URL || '';
 
 const UserAvatar = ({ user, index }) => {
+  const { dark } = useColors();
+  const ring = dark ? '#1a2030' : 'white';
   const initials = user.name
     ?.split(' ')
     .map((n) => n[0])
@@ -53,7 +56,8 @@ const UserAvatar = ({ user, index }) => {
       <Box
         w="28px" h="28px"
         borderRadius="full"
-        border="2px solid white"
+        border="2px solid"
+        borderColor={ring}
         overflow="hidden"
         display="flex" alignItems="center" justifyContent="center"
         fontSize="9px" fontWeight="bold" color="white" flexShrink={0}
@@ -67,7 +71,8 @@ const UserAvatar = ({ user, index }) => {
       </Box>
       <Box
         position="absolute" bottom="0" right="0"
-        w="8px" h="8px" bg="#22c55e" borderRadius="full" border="1.5px solid white"
+        w="8px" h="8px" bg="#22c55e" borderRadius="full" border="1.5px solid"
+        borderColor={ring}
       />
     </Box>
   );
@@ -285,7 +290,8 @@ const KanbanBoard = ({
                 <Box
                   ml="-8px" w="28px" h="28px"
                   borderRadius="full"
-                  border="2px solid white"
+                  border="2px solid"
+                  borderColor={dark ? '#1a2030' : 'white'}
                   bg={dark ? '#2a3244' : 'gray.200'}
                   display="flex" alignItems="center" justifyContent="center"
                   fontSize="9px" fontWeight="bold"
@@ -306,11 +312,15 @@ const KanbanBoard = ({
 
         <Button
           flexShrink={0}
-          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
-          _hover={{ opacity: 0.9 }}
+          size="sm"
+          bg="#6366f1"
+          color="white"
+          _hover={{ bg: '#4f46e5' }}
+          _active={{ transform: 'scale(0.98)' }}
           onClick={() => setIsCreateModalOpen(true)}
         >
-          + New Task
+          <LuPlus size={15} />
+          New Task
         </Button>
       </Box>
 
@@ -334,7 +344,9 @@ const KanbanBoard = ({
                 fontSize="sm"
               >
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Text flexShrink={0}>🔄</Text>
+                  <Box flexShrink={0} display="flex" alignItems="center">
+                    <LuRefreshCw size={14} />
+                  </Box>
                   <Text>
                     <Box as="span" fontWeight="semibold">{notif.name}</Box>
                     {' moved '}
@@ -385,7 +397,11 @@ const KanbanBoard = ({
         </Box>
 
         <DragOverlay>
-          {activeTask ? <TaskCard task={activeTask} /> : null}
+          {activeTask ? (
+            <Box transform="rotate(2deg)" boxShadow="0 12px 28px rgba(0,0,0,0.22)" borderRadius="xl">
+              <TaskCard task={activeTask} />
+            </Box>
+          ) : null}
         </DragOverlay>
       </DndContext>
 

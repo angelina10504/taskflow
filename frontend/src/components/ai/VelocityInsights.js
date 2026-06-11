@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
+import { LuSparkles } from 'react-icons/lu';
 import {
   DialogRoot,
   DialogContent,
@@ -60,7 +61,9 @@ const VelocityInsights = ({ isOpen, onClose, projectId }) => {
       <DialogContent bg={cardBg} color={textPrimary} maxW="720px">
         <DialogHeader borderBottomColor={border}>
           <Box display="flex" alignItems="center" gap={2}>
-            <Text fontSize="xl">✨</Text>
+            <Box color="#a855f7" display="flex" alignItems="center">
+              <LuSparkles size={20} />
+            </Box>
             <Heading size="lg" color={textPrimary}>Velocity Intelligence</Heading>
           </Box>
           <DialogCloseTrigger />

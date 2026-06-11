@@ -79,6 +79,9 @@ const io = new Server(httpServer, {
   pingInterval: 25000,
 });
 
+// Make io reachable from route handlers (e.g. manual Risk Radar scans)
+app.set('io', io);
+
 // projectId -> Map(socketId -> { id, name, avatar })
 const projectRooms = new Map();
 
@@ -137,3 +140,23 @@ const PORT = process.env.PORT || 5001;
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
+// --- Risk Radar: proactive project health scans ---
+const cron = require('node-cron');
+const { scanAllActiveProjects } = require('./utils/riskRadar');
+
+// Daily scan at 08:00 server time. Note: on free-tier hosts that sleep when idle,
+// the process must be awake for this to fire — the boot catch-up below covers gaps.
+cron.schedule('0 8 * * *', () => {
+  scanAllActiveProjects(io, 'scheduled').catch((err) =>
+    console.error('Risk radar scheduled scan failed:', err)
+  );
+});
+
+// Catch-up scan shortly after boot; skips projects with a report fresher than ~20h
+// so nodemon restarts and redeploys don't spam new reports.
+setTimeout(() => {
+  scanAllActiveProjects(io, 'boot').catch((err) =>
+    console.error('Risk radar boot scan failed:', err)
+  );
+}, 15000);

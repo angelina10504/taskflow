@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import KanbanBoard from '../components/task/KanbanBoard';
 import VelocityInsights from '../components/ai/VelocityInsights';
 import CommandBoard from '../components/ai/CommandBoard';
+import RiskBanner from '../components/ai/RiskBanner';
 import * as taskService from '../services/taskService';
 import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
@@ -10,12 +11,13 @@ import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
 import useColors from '../hooks/useColors';
+import { LuZap, LuSparkles } from 'react-icons/lu';
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { panelBg, border, textPrimary, textSecondary, textMuted } = useColors();
+  const { panelBg, border, hoverBg, textPrimary, textSecondary, textMuted } = useColors();
 
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,13 +112,14 @@ const ProjectDetail = () => {
           <Box ml="auto" display="flex" gap={2}>
             <Button
               size="sm"
+              variant="ghost"
               onClick={() => setCommandOpen(true)}
-              variant="outline"
-              borderColor="purple.400"
-              color={textPrimary}
-              _hover={{ bg: 'rgba(168,85,247,0.12)' }}
+              color={textSecondary}
+              _hover={{ bg: hoverBg, color: textPrimary }}
+              _active={{ transform: 'scale(0.98)' }}
             >
-              ⚡ Command
+              <LuZap size={15} />
+              Command
             </Button>
             <Button
               size="sm"
@@ -124,8 +127,10 @@ const ProjectDetail = () => {
               style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
               color="white"
               _hover={{ opacity: 0.9 }}
+              _active={{ transform: 'scale(0.98)' }}
             >
-              ✨ AI Insights
+              <LuSparkles size={15} />
+              AI Insights
             </Button>
           </Box>
         </Box>
@@ -138,6 +143,13 @@ const ProjectDetail = () => {
           <Text>{new Date(project.createdAt).toLocaleDateString()}</Text>
         </Box>
       </Box>
+
+      {/* Risk Radar health banner */}
+      <RiskBanner
+        projectId={id}
+        socket={socket}
+        onOpenDetails={() => setInsightsOpen(true)}
+      />
 
       {/* Tasks / Kanban — fills remaining height */}
       <Box

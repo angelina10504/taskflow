@@ -11,6 +11,7 @@ A full-stack, high-performance project management application inspired by Trello
 
 * **🤖 AI Velocity Intelligence:** One click turns your board into a forecast — throughput, cycle time, overdue/stale detection, per-assignee workload, and a *projected finish date vs. deadline*, with an AI-written risk verdict, insights, and recommendations.
 * **⚡ AI "Command the Board":** A chat box that *acts*, not just answers. Type natural-language commands (e.g. *"move everything in review to done"*, *"assign all unassigned tasks to me"*, *"create a task 'Write release notes' due Friday"*) and an AI agent executes them via tool-use against your tasks.
+* **🩺 Proactive Risk Radar:** A scheduled health scan (daily cron + boot catch-up) that checks every active project for overdue work, stale tasks, and deadline slips — then pushes a live risk banner to everyone viewing the project via Socket.IO. No more "analytics you have to remember to check."
 * **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer).
 * **Real-time Kanban:** Interactive board using `@dnd-kit` for smooth drag-and-drop. Task movements are synced across all active users in a project via **Socket.IO**.
 * **Smart Tasks:** Track priorities (Low to Urgent), assignees, labels, and estimated time. Automatic `completedAt` timestamps are generated when moved to "Done."
@@ -29,6 +30,12 @@ All hard metrics are computed **deterministically in code** (the LLM never does 
 * **Computed:** completion rate, weekly throughput, average/median cycle time, overdue tasks, stale in-progress tasks (5+ days untouched), estimate coverage, per-assignee workload, and a deadline projection (`projectedFinish` vs. `project.deadline`).
 * **AI narrative:** a structured JSON verdict — `riskLevel` (on_track / at_risk / off_track), a headline, summary, insights, and concrete recommendations.
 * **Graceful fallback:** with no API key set, the endpoint still returns the full computed metrics plus a rule-based summary (no crash).
+
+### 🩺 Risk Radar — `GET /api/ai/projects/:projectId/health` · `POST …/health/scan`
+Proactive monitoring instead of on-demand analytics.
+* **Scheduled:** a `node-cron` job (daily, 08:00 server time) plus a boot-time catch-up scan (skips projects scanned in the last ~20h, so restarts don't spam reports).
+* **Deterministic risk:** `on_track / at_risk / off_track` is derived purely from computed stats (overdue count, stale in-progress tasks, deadline projection). The LLM only phrases the one-line headline — and is only called when something is actually wrong.
+* **Live delivery:** each report is persisted (`HealthReport` collection) and broadcast to the project's Socket.IO room, so the risk banner updates in real time for everyone viewing the board. A "Scan now" button triggers it manually.
 
 ### ⚡ Command the Board — `POST /api/ai/projects/:projectId/command`
 An agentic tool-use loop maps natural language to real board mutations.
@@ -92,6 +99,8 @@ The MongoDB schema is designed for multi-tenant scalability:
 | :--- | :--- | :--- |
 | GET | `/projects/:projectId/velocity` | Velocity & estimate intelligence (computed metrics + AI verdict) |
 | POST | `/projects/:projectId/command` | Execute a natural-language command against the board (agentic tool-use) |
+| GET | `/projects/:projectId/health` | Latest Risk Radar health report for the project |
+| POST | `/projects/:projectId/health/scan` | Run a Risk Radar scan now (broadcasts to the project's socket room) |
 
 ### 🏢 Workspaces (`/api/workspaces`) - *Protected*
 | Method | Endpoint | Description |
