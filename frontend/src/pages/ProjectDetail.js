@@ -4,6 +4,7 @@ import KanbanBoard from '../components/task/KanbanBoard';
 import VelocityInsights from '../components/ai/VelocityInsights';
 import CommandBoard from '../components/ai/CommandBoard';
 import RiskBanner from '../components/ai/RiskBanner';
+import EditProjectModal from '../components/project/EditProjectModal';
 import * as taskService from '../services/taskService';
 import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
@@ -11,7 +12,7 @@ import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
 import useColors from '../hooks/useColors';
-import { LuZap, LuSparkles } from 'react-icons/lu';
+import { LuZap, LuSparkles, LuPencil } from 'react-icons/lu';
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -26,7 +27,26 @@ const ProjectDetail = () => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
+
+  const handleProjectSave = async (data) => {
+    try {
+      const res = await projectService.updateProject(id, data);
+      // Keep the populated workspace from the existing state — the update
+      // response returns it as a plain id, which would break the breadcrumb.
+      setProject((prev) => ({ ...res.project, workspace: prev.workspace }));
+      toaster.create({ title: 'Project updated', type: 'success', duration: 3000 });
+    } catch (error) {
+      toaster.create({
+        title: 'Error',
+        description: error.message || 'Failed to update project',
+        type: 'error',
+        duration: 5000,
+      });
+      throw error;
+    }
+  };
 
   const handleCommandTasks = (updatedTasks) => {
     setTasks(updatedTasks);
@@ -113,6 +133,18 @@ const ProjectDetail = () => {
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setEditOpen(true)}
+              color={textSecondary}
+              _hover={{ bg: hoverBg, color: textPrimary }}
+              _active={{ transform: 'scale(0.98)' }}
+              aria-label="Edit project"
+            >
+              <LuPencil size={14} />
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setCommandOpen(true)}
               color={textSecondary}
               _hover={{ bg: hoverBg, color: textPrimary }}
@@ -196,6 +228,13 @@ const ProjectDetail = () => {
         onClose={() => setCommandOpen(false)}
         projectId={id}
         onTasksChanged={handleCommandTasks}
+      />
+
+      <EditProjectModal
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSave={handleProjectSave}
+        project={project}
       />
     </Box>
   );
