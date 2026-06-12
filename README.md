@@ -15,7 +15,8 @@ A full-stack, high-performance project management application inspired by Trello
 * **✨ AI Quick-Add:** Type one line above the board — *"Fix login bug, urgent, due Friday, assign to Sam"* — and the parser extracts a clean title, priority, due date, and assignees into a properly structured task. Works without an AI key too (falls back to a plain task).
 * **📋 Meeting Notes → Tasks:** Paste raw standup notes, a Slack thread, or a transcript; the AI extracts the concrete action items (owners, deadlines, priorities) into a review checklist — tick what you want and they're bulk-created on the board. Decisions and FYIs are skipped automatically.
 * **🗺️ Plan with AI (Epic Decomposition):** Describe a big goal — *"build Stripe payment integration"* — and the AI drafts 5–10 ordered, board-ready subtasks with priorities and time estimates. Review the plan, untick steps, approve — and the estimates feed straight into Velocity Intelligence's forecasting.
-* **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer).
+* **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer) — enforced server-side: owners/admins assign tasks to anyone, members self-assign only, viewers are read-only.
+* **📧 Email Notifications + Calendar Invites:** Assign someone a task and they get a branded email with the details — including a standard `.ics` calendar invite when the task has a due date, so Gmail/Outlook offer "Add to calendar" natively (no Google Calendar OAuth needed). Workspace invitations are emailed too. Works with any SMTP provider via env vars; cleanly disabled when unconfigured.
 * **Real-time Kanban:** Interactive board using `@dnd-kit` for smooth drag-and-drop. Task movements are synced across all active users in a project via **Socket.IO**.
 * **Smart Tasks:** Track priorities (Low to Urgent), assignees, labels, and estimated time. Automatic `completedAt` timestamps are generated when moved to "Done."
 * **Secure Authentication:** Dual-token JWT system (Access/Refresh) with automated silent refreshing via Axios interceptors and Google OAuth support.
@@ -131,7 +132,7 @@ The MongoDB schema is designed for multi-tenant scalability:
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | POST | `/` | Create a new workspace |
-| POST | `/:id/invite` | Generate a 7-day email invitation token |
+| POST | `/:id/invite` | Validate the email, then email a 7-day invitation link (or return it for manual sharing) |
 | DELETE | `/:id/members/:userId`| Remove a member from the workspace |
 
 ### 📊 Projects & Tasks (`/api/projects`, `/api/tasks`) - *Protected*
@@ -174,6 +175,15 @@ AI_BASE_URL=https://api.groq.com/openai/v1
 # To switch providers, change the three vars above, e.g.:
 #   Gemini: AI_MODEL=gemini-2.0-flash  AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 #   Ollama: AI_MODEL=llama3.1          AI_BASE_URL=http://localhost:11434/v1
+
+# Email notifications (optional — any SMTP provider works; leave as-is to disable)
+# Gmail: smtp.gmail.com + an App Password (Google Account → Security → 2FA → App passwords)
+# Brevo free tier: smtp-relay.brevo.com (300 emails/day)
+SMTP_HOST=your_smtp_host_here
+SMTP_PORT=587
+SMTP_USER=your_smtp_user_here
+SMTP_PASS=your_smtp_password_here
+MAIL_FROM="TaskFlow <no-reply@yourdomain.com>"
 ```
 
 The frontend reads its API/Socket URLs from `frontend/.env` (production) / `frontend/.env.local` (local), e.g. `REACT_APP_API_URL=http://localhost:5001`.

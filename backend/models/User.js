@@ -16,7 +16,8 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        // local@domain.tld with a 2+ char TLD; allows +tags and long TLDs
+        /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
         'Please provide a valid email',
       ],
     },
@@ -52,6 +53,10 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: true,
     },
   },
   {
