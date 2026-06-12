@@ -4,6 +4,7 @@ const {
   generateRefreshToken,
 } = require('../utils/generateToken');
 const { OAuth2Client } = require('google-auth-library');
+const { isValidEmail, normalizeEmail } = require('../utils/validateEmail');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -25,7 +26,29 @@ const REFRESH_COOKIE_OPTIONS = {
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+
+    if (!name || !name.trim() || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and password are required',
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters',
+      });
+    }
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
@@ -38,7 +61,7 @@ const register = async (req, res) => {
 
     // Create user
     const user = await User.create({
-      name,
+      name: name.trim(),
       email,
       password, // Will be hashed by the pre-save hook
     });

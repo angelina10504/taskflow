@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { Box, Button, Input, Heading, Text } from '@chakra-ui/react';
 import useColors from '../../hooks/useColors';
+import AssigneePicker from './AssigneePicker';
 
-const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    link: '',
-    priority: 'medium',
-    status: 'todo',
-    dueDate: '',
-  });
+const EMPTY_FORM = {
+  title: '',
+  description: '',
+  link: '',
+  priority: 'medium',
+  status: 'todo',
+  dueDate: '',
+  assignedTo: [],
+};
+
+const CreateTaskModal = ({
+  isOpen,
+  onClose,
+  onCreate,
+  projectId,
+  workspaceId,
+  workspaceMembers = [],
+  currentUser,
+  currentUserRole,
+}) => {
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const { dark, cardBg, inputBg, border, textPrimary, textSecondary } = useColors();
@@ -55,7 +68,7 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
         project: projectId,
         workspace: workspaceId,
       });
-      setFormData({ title: '', description: '', link: '', priority: 'medium', status: 'todo', dueDate: '' });
+      setFormData(EMPTY_FORM);
       onClose();
     } catch (error) {
       console.error('Create task error:', error);
@@ -65,7 +78,7 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
   };
 
   const handleClose = () => {
-    setFormData({ title: '', description: '', priority: 'medium', status: 'todo', dueDate: '' });
+    setFormData(EMPTY_FORM);
     setErrors({});
     onClose();
   };
@@ -198,7 +211,7 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
               </Box>
             </Box>
 
-            <Box>
+            <Box mb={4}>
               <Text mb={1.5} fontWeight="medium" fontSize="sm" color={textPrimary}>
                 Due Date (optional)
               </Text>
@@ -211,6 +224,19 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, projectId, workspaceId }) 
                 color={textPrimary}
                 borderColor={border}
                 _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+              />
+            </Box>
+
+            <Box>
+              <Text mb={1.5} fontWeight="medium" fontSize="sm" color={textPrimary}>
+                Assign to (optional)
+              </Text>
+              <AssigneePicker
+                members={workspaceMembers}
+                value={formData.assignedTo}
+                onChange={(ids) => setFormData((prev) => ({ ...prev, assignedTo: ids }))}
+                currentUserId={currentUser?.id}
+                currentUserRole={currentUserRole}
               />
             </Box>
           </form>

@@ -113,6 +113,11 @@ const ProjectDetail = () => {
   if (isLoading) return <Center h="100vh"><Spinner size="xl" color="blue.500" /></Center>;
   if (!project) return null;
 
+  const workspaceMembers = project.workspace?.members || [];
+  const currentUserRole =
+    workspaceMembers.find((m) => String(m.user?._id || m.user) === String(user?.id))?.role ||
+    'member';
+
   return (
     <Box h="100vh" display="flex" flexDirection="column" overflow="hidden" px={6} pt={5} pb={5}>
       {/* Breadcrumb */}
@@ -251,6 +256,8 @@ const ProjectDetail = () => {
               initialTasks={tasks}
               onTasksUpdate={setTasks}
               workspaceMemberCount={project.workspace?.members?.length || 1}
+              workspaceMembers={workspaceMembers}
+              currentUserRole={currentUserRole}
               socket={socket}
               onlineUsers={onlineUsers}
               currentUser={user}

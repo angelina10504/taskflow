@@ -5,13 +5,17 @@ const HealthReport = require('../models/HealthReport');
 const { computeVelocityStats } = require('../utils/velocityStats');
 const { getClient, MODEL } = require('../utils/aiClient');
 const { scanProject } = require('../utils/riskRadar');
+const { notifyAssignment } = require('../utils/taskNotify');
 
 const checkWorkspaceMembership = async (workspaceId, userId) => {
   const workspace = await Workspace.findById(workspaceId);
-  if (!workspace) return { isMember: false, workspace: null };
-  const isMember = workspace.members.some((m) => m.user.toString() === userId);
-  return { isMember, workspace };
+  if (!workspace) return { isMember: false, workspace: null, role: null };
+  const member = workspace.members.find((m) => m.user.toString() === userId);
+  return { isMember: !!member, workspace, role: member ? member.role : null };
 };
+
+// Owners/admins may assign anyone; members only themselves (mirrors taskController).
+const canAssignOthers = (role) => role === 'owner' || role === 'admin';
 
 const SYSTEM_PROMPT = `You are the velocity analyst for TaskFlow, a project management app.
 You are given pre-computed, deterministic metrics for a single project's task board.
@@ -234,11 +238,13 @@ const COMMAND_TOOLS = [
 
 // Execute a single tool call against the DB, scoped to this project.
 const executeCommandTool = async (name, input, ctx) => {
-  const { projectId, workspaceId, userId, memberIds, actions } = ctx;
+  const { projectId, workspaceId, userId, memberIds, actions, selfOnly } = ctx;
 
   const validateAssignees = (ids) => {
     if (!Array.isArray(ids)) return [];
-    return ids.filter((id) => memberIds.has(String(id)));
+    return ids.filter(
+      (id) => memberIds.has(String(id)) && (!selfOnly || String(id) === String(userId))
+    );
   };
 
   if (name === 'create_task') {
@@ -257,6 +263,15 @@ const executeCommandTool = async (name, input, ctx) => {
       createdBy: userId,
     });
     actions.push(`Created task "${task.title}" in ${task.status}`);
+    if (task.assignedTo.length) {
+      notifyAssignment({
+        task,
+        project: ctx.project,
+        assignerId: userId,
+        assignerName: ctx.userName,
+        addedIds: task.assignedTo.map(String),
+      });
+    }
     return { ok: true, task: serializeTask(task) };
   }
 
@@ -274,6 +289,7 @@ const executeCommandTool = async (name, input, ctx) => {
 
   if (name === 'update_task') {
     const changes = [];
+    let addedAssignees = [];
     if (input.status && STATUS_ENUM.includes(input.status) && input.status !== task.status) {
       task.status = input.status;
       task.position = 0;
@@ -284,7 +300,9 @@ const executeCommandTool = async (name, input, ctx) => {
       changes.push(`priority→${input.priority}`);
     }
     if (Array.isArray(input.assignee_ids)) {
+      const prevAssignees = task.assignedTo.map(String);
       task.assignedTo = validateAssignees(input.assignee_ids);
+      addedAssignees = task.assignedTo.map(String).filter((id) => !prevAssignees.includes(id));
       changes.push('reassigned');
     }
     if (input.due_date !== undefined) {
@@ -299,6 +317,15 @@ const executeCommandTool = async (name, input, ctx) => {
 
     await task.save();
     if (changes.length) actions.push(`Updated "${task.title}" (${changes.join(', ')})`);
+    if (addedAssignees.length) {
+      notifyAssignment({
+        task,
+        project: ctx.project,
+        assignerId: userId,
+        assignerName: ctx.userName,
+        addedIds: addedAssignees,
+      });
+    }
     return { ok: true, task: serializeTask(task) };
   }
 
@@ -331,8 +358,11 @@ const commandBoard = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    const { isMember, workspace, role } = await checkWorkspaceMembership(project.workspace, req.user.id);
     if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+    if (role === 'viewer') {
+      return res.status(403).json({ success: false, message: 'Viewers cannot modify the board' });
+    }
 
     const refreshTasks = () =>
       Task.find({ project: projectId }).populate('assignedTo', 'name email').sort('position');
@@ -364,7 +394,16 @@ const commandBoard = async (req, res) => {
     };
 
     const actions = [];
-    const ctx = { projectId, workspaceId: workspace._id, userId: req.user.id, memberIds, actions };
+    const ctx = {
+      projectId,
+      workspaceId: workspace._id,
+      userId: req.user.id,
+      memberIds,
+      actions,
+      project,
+      userName: req.user.name || 'A teammate',
+      selfOnly: !canAssignOthers(role),
+    };
 
     const messages = [
       { role: 'system', content: COMMAND_SYSTEM },
@@ -526,8 +565,11 @@ const quickAddTask = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    const { isMember, workspace, role } = await checkWorkspaceMembership(project.workspace, req.user.id);
     if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+    if (role === 'viewer') {
+      return res.status(403).json({ success: false, message: 'Viewers cannot create tasks' });
+    }
 
     const members = await Workspace.findById(workspace._id)
       .populate('members.user', 'name email')
@@ -573,9 +615,13 @@ const quickAddTask = async (req, res) => {
     const normalize = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
     const status = STATUS_ENUM.includes(normalize(parsed.status)) ? normalize(parsed.status) : 'todo';
     const priority = PRIORITY_ENUM.includes(normalize(parsed.priority)) ? normalize(parsed.priority) : 'medium';
-    const assignees = Array.isArray(parsed.assignee_ids)
+    let assignees = Array.isArray(parsed.assignee_ids)
       ? parsed.assignee_ids.filter((id) => memberIds.has(String(id)))
       : [];
+    // Members can only self-assign — silently drop other names the model picked up.
+    if (!canAssignOthers(role)) {
+      assignees = assignees.filter((id) => String(id) === req.user.id.toString());
+    }
     let dueDate;
     if (parsed.due_date) {
       const d = new Date(parsed.due_date);
@@ -598,6 +644,16 @@ const quickAddTask = async (req, res) => {
 
     await task.populate('createdBy', 'name email avatar');
     await task.populate('assignedTo', 'name email avatar');
+
+    if (task.assignedTo.length) {
+      notifyAssignment({
+        task,
+        project,
+        assignerId: req.user.id,
+        assignerName: req.user.name || 'A teammate',
+        addedIds: task.assignedTo.map((u) => u._id),
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -845,14 +901,18 @@ const bulkCreateTasks = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    const { isMember, workspace, role } = await checkWorkspaceMembership(project.workspace, req.user.id);
     if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+    if (role === 'viewer') {
+      return res.status(403).json({ success: false, message: 'Viewers cannot create tasks' });
+    }
 
     const members = await Workspace.findById(workspace._id).then((ws) =>
       (ws?.members || []).map((m) => m.user.toString())
     );
     const memberIds = new Set(members);
     memberIds.add(req.user.id.toString());
+    const selfOnly = !canAssignOthers(role);
 
     const highest = await Task.findOne({ project: projectId, status: 'todo' }).sort('-position');
     let position = highest ? highest.position + 1 : 0;
@@ -875,8 +935,9 @@ const bulkCreateTasks = async (req, res) => {
         workspace: workspace._id,
         status: 'todo',
         priority: PRIORITY_ENUM.includes(normalize(it.priority)) ? normalize(it.priority) : 'medium',
-        assignedTo: (Array.isArray(it.assigneeIds) ? it.assigneeIds : []).filter((id) =>
-          memberIds.has(String(id))
+        assignedTo: (Array.isArray(it.assigneeIds) ? it.assigneeIds : []).filter(
+          (id) =>
+            memberIds.has(String(id)) && (!selfOnly || String(id) === req.user.id.toString())
         ),
         dueDate,
         estimatedTime: Number.isFinite(mins) && mins > 0 ? Math.min(Math.round(mins), 6000) : undefined,
@@ -885,6 +946,15 @@ const bulkCreateTasks = async (req, res) => {
       });
       await task.populate('createdBy', 'name email avatar');
       await task.populate('assignedTo', 'name email avatar');
+      if (task.assignedTo.length) {
+        notifyAssignment({
+          task,
+          project,
+          assignerId: req.user.id,
+          assignerName: req.user.name || 'A teammate',
+          addedIds: task.assignedTo.map((u) => u._id),
+        });
+      }
       created.push(task);
     }
 

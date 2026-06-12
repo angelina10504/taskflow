@@ -84,6 +84,8 @@ const KanbanBoard = ({
   initialTasks,
   onTasksUpdate,
   workspaceMemberCount,
+  workspaceMembers = [],
+  currentUserRole,
   socket,
   onlineUsers = [],
   currentUser,
@@ -411,6 +413,9 @@ const KanbanBoard = ({
         onCreate={handleCreateTask}
         projectId={projectId}
         workspaceId={workspaceId}
+        workspaceMembers={workspaceMembers}
+        currentUser={currentUser}
+        currentUserRole={currentUserRole}
       />
 
       <TaskDetailModal
@@ -420,6 +425,9 @@ const KanbanBoard = ({
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         workspaceMemberCount={workspaceMemberCount}
+        workspaceMembers={workspaceMembers}
+        currentUser={currentUser}
+        currentUserRole={currentUserRole}
       />
     </Box>
   );

@@ -12,7 +12,9 @@ import {
 import * as taskService from '../../services/taskService';
 import { toaster } from '../ui/toaster';
 import ConfirmDialog from '../common/ConfirmDialog';
+import AssigneePicker from './AssigneePicker';
 import useColors from '../../hooks/useColors';
+import { LuCalendarPlus } from 'react-icons/lu';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -23,7 +25,30 @@ const STATUS_LABELS = {
   done: 'Done',
 };
 
-const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceMemberCount }) => {
+// Google Calendar "add event" link for the task's due date (all-day; end date is exclusive)
+const buildGoogleCalendarUrl = (task) => {
+  const fmt = (d) => new Date(d).toISOString().slice(0, 10).replace(/-/g, '');
+  const dayAfter = new Date(new Date(task.dueDate).getTime() + 86400000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: task.title,
+    dates: `${fmt(task.dueDate)}/${fmt(dayAfter)}`,
+    details: `TaskFlow task${task.description ? `\n\n${task.description}` : ''}\n\n${window.location.href}`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
+
+const TaskDetailModal = ({
+  task,
+  isOpen,
+  onClose,
+  onUpdate,
+  onDelete,
+  workspaceMemberCount,
+  workspaceMembers = [],
+  currentUser,
+  currentUserRole,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -41,6 +66,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
         dueDate: task.dueDate
           ? new Date(task.dueDate).toISOString().split('T')[0]
           : '',
+        assignedTo: (task.assignedTo || []).map((u) => String(u._id || u)),
       });
     }
     setIsEditing(false);
@@ -266,9 +292,35 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
                   _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
                 />
               ) : (
-                <Text fontSize="sm" color={task.dueDate ? textPrimary : textMuted}>
-                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
-                </Text>
+                <Box display="flex" alignItems="center" gap={3} flexWrap="wrap">
+                  <Text fontSize="sm" color={task.dueDate ? textPrimary : textMuted}>
+                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                  </Text>
+                  {task.dueDate && (
+                    <Box
+                      as="a"
+                      href={buildGoogleCalendarUrl(task)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      display="inline-flex"
+                      alignItems="center"
+                      gap={1.5}
+                      px={2.5}
+                      py={1}
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor={border}
+                      fontSize="xs"
+                      color={textSecondary}
+                      cursor="pointer"
+                      transition="all 0.15s"
+                      _hover={{ borderColor: '#818cf8', color: textPrimary }}
+                    >
+                      <LuCalendarPlus size={13} />
+                      Add to calendar
+                    </Box>
+                  )}
+                </Box>
               )}
             </Box>
 
@@ -280,8 +332,20 @@ const TaskDetailModal = ({ task, isOpen, onClose, onUpdate, onDelete, workspaceM
               </Box>
             )}
 
-            {/* Assignees */}
-            {task.assignedTo && task.assignedTo.length > 0 && (
+            {/* Assignees — picker while editing, read-only pills otherwise */}
+            {isEditing && (
+              <Box mb={4}>
+                <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={2}>Assignees</Text>
+                <AssigneePicker
+                  members={workspaceMembers}
+                  value={editData.assignedTo || []}
+                  onChange={(ids) => setEditData((prev) => ({ ...prev, assignedTo: ids }))}
+                  currentUserId={currentUser?.id}
+                  currentUserRole={currentUserRole}
+                />
+              </Box>
+            )}
+            {!isEditing && task.assignedTo && task.assignedTo.length > 0 && (
               <Box mb={4}>
                 <Text fontSize="sm" fontWeight="medium" color={textSecondary} mb={2}>Assignees</Text>
                 <Box display="flex" gap={2} flexWrap="wrap">

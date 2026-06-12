@@ -1,5 +1,7 @@
 const Workspace = require('../models/Workspace');
 const User = require('../models/User');
+const { isValidEmail, normalizeEmail } = require('../utils/validateEmail');
+const { sendMail, isMailConfigured } = require('../utils/mailer');
 
 // @desc    Get all workspaces for logged-in user
 // @route   GET /api/workspaces
@@ -246,12 +248,20 @@ const leaveWorkspace = async (req, res) => {
 
 const inviteMember = async (req, res) => {
   try {
-    const { email, role } = req.body;
+    const { role } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     if (!email) {
       return res.status(400).json({
         success: false,
         message: 'Email is required',
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address',
       });
     }
 
@@ -322,13 +332,32 @@ const inviteMember = async (req, res) => {
 
       await workspace.save();
 
-      // TODO: Send email with invitation link
-      // For now, return the invitation info
+      const invitationLink = `${process.env.CLIENT_URL}/invite/${token}`;
+      const inviterName = req.user.name || 'A teammate';
+
+      // Fire-and-forget invitation email (no-op when SMTP isn't configured —
+      // the link is still returned so it can be shared manually).
+      sendMail({
+        to: email,
+        subject: `${inviterName} invited you to "${workspace.name}" on TaskFlow`,
+        text: `${inviterName} invited you to join the workspace "${workspace.name}" on TaskFlow.\n\nAccept the invitation (link expires in 7 days):\n${invitationLink}`,
+        html: `
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto">
+  <div style="background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:10px 10px 0 0;padding:14px 20px;color:#ffffff;font-weight:bold;font-size:16px">TaskFlow</div>
+  <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:20px;color:#1f2937">
+    <p style="margin:0 0 16px"><strong>${inviterName.replace(/</g, '&lt;')}</strong> invited you to join the workspace <strong>${workspace.name.replace(/</g, '&lt;')}</strong>.</p>
+    <a href="${invitationLink}" style="display:inline-block;background:linear-gradient(90deg,#6366f1,#a855f7);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Accept Invitation</a>
+    <p style="font-size:12px;color:#9ca3af;margin:16px 0 0">This link expires in 7 days. If you weren't expecting this, you can ignore it.</p>
+  </div>
+</div>`,
+      });
 
       res.status(200).json({
         success: true,
-        message: `Invitation sent to ${email}`,
-        invitationLink: `${process.env.CLIENT_URL}/invite/${token}`,
+        message: isMailConfigured()
+          ? `Invitation emailed to ${email}`
+          : `Invitation created for ${email} — share the link below (email isn't configured)`,
+        invitationLink,
       });
     }
   } catch (error) {

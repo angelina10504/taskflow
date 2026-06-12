@@ -65,7 +65,10 @@ const getProject = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate('createdBy', 'name email avatar')
-      .populate('workspace');
+      .populate({
+        path: 'workspace',
+        populate: { path: 'members.user', select: 'name email avatar' },
+      });
 
     if (!project) {
       return res.status(404).json({
