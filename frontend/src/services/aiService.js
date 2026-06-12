@@ -30,6 +30,36 @@ export const getHealthReport = async (projectId) => {
   }
 };
 
+// Create a task from one line of natural language (AI Quick-Add)
+export const quickAddTask = async (projectId, text) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/quick-add`, { text });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Quick add failed' };
+  }
+};
+
+// Extract action items from pasted meeting notes (review-first: no tasks created yet)
+export const extractTasksFromNotes = async (projectId, notes) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/extract-tasks`, { notes });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to extract tasks from notes' };
+  }
+};
+
+// Bulk-create the approved tasks from the review step
+export const bulkCreateTasks = async (projectId, items) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/bulk-create`, { items });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to create tasks' };
+  }
+};
+
 // Run a Risk Radar scan now
 export const runHealthScan = async (projectId) => {
   try {

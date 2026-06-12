@@ -477,4 +477,334 @@ const scanProjectHealth = async (req, res) => {
   }
 };
 
-module.exports = { getVelocityInsights, commandBoard, getProjectHealth, scanProjectHealth };
+// ---------------------------------------------------------------------------
+// Natural-language Quick-Add
+// ---------------------------------------------------------------------------
+
+// A literal date table so the model never does weekday arithmetic itself.
+const buildCalendar = (days = 10) => {
+  const now = Date.now();
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(now + i * 86400000);
+    return {
+      date: d.toISOString().slice(0, 10),
+      weekday: d.toLocaleDateString('en-US', { weekday: 'long' }),
+      label: i === 0 ? 'today' : i === 1 ? 'tomorrow' : undefined,
+    };
+  });
+};
+
+const QUICK_ADD_SYSTEM = `You turn one line of natural language into a structured task for a Kanban board.
+
+Rules:
+- Extract only what the text states or clearly implies. Never invent details.
+- "title" is required: the core action, cleaned of metadata phrases (priority words, dates, assignee names). Keep it short and imperative.
+- "priority": low|medium|high|urgent only when stated or clearly implied ("asap"/"critical" → urgent). Otherwise null.
+- "due_date": resolve relative dates ("tomorrow", "Friday", "next week") by LOOKING UP the provided calendar (a list of upcoming dates with their weekday names) — never compute weekdays yourself. Mentioned weekday → the first calendar entry with that weekday after today. No date mentioned → null; never invent one.
+- "assignee_ids": ids copied exactly from the member list when the text names people ("assign to X", "for X", "@X"). Match first names case-insensitively; "me" means the current user. Names not in the list: ignore.
+- "description": extra context that does not belong in the title, else null.
+- "status": todo|in_progress|in_review|done only if explicitly stated ("mark as done", "already in review"). Otherwise null.
+
+Respond with ONLY this JSON object:
+{"title": string, "description": string|null, "priority": string|null, "due_date": "YYYY-MM-DD"|null, "assignee_ids": string[], "status": string|null}`;
+
+// @desc    Create a task from one line of natural language
+// @route   POST /api/ai/projects/:projectId/quick-add
+// @access  Private
+const quickAddTask = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const text = (req.body.text || '').trim();
+
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'Some text is required' });
+    }
+    if (text.length > 500) {
+      return res.status(400).json({ success: false, message: 'Keep quick-add under 500 characters' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const members = await Workspace.findById(workspace._id)
+      .populate('members.user', 'name email')
+      .then((ws) => (ws?.members || []).map((m) => m.user).filter(Boolean));
+    const memberIds = new Set(members.map((u) => u._id.toString()));
+    memberIds.add(req.user.id.toString());
+
+    // Without an AI key the bar still works: raw text becomes the title.
+    let parsed = { title: text, description: null, priority: null, due_date: null, assignee_ids: [], status: null };
+    let aiAvailable = false;
+
+    const ai = getClient();
+    if (ai) {
+      const payload = {
+        text,
+        calendar: buildCalendar(),
+        current_user: { id: req.user.id.toString(), name: req.user.name },
+        members: members.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email })),
+      };
+      try {
+        const completion = await ai.chat.completions.create({
+          model: MODEL,
+          max_tokens: 300,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: QUICK_ADD_SYSTEM },
+            { role: 'user', content: JSON.stringify(payload, null, 2) },
+          ],
+        });
+        const out = completion.choices?.[0]?.message?.content || '';
+        const candidate = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+        if (candidate && typeof candidate.title === 'string' && candidate.title.trim()) {
+          parsed = { ...parsed, ...candidate, title: candidate.title.trim() };
+          aiAvailable = true;
+        }
+      } catch (err) {
+        // Parsing is best-effort: fall back to the raw text rather than failing the add.
+        console.error('Quick-add AI parse failed, using raw title:', err.message);
+      }
+    }
+
+    // Validate everything the model returned before touching the DB.
+    const normalize = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
+    const status = STATUS_ENUM.includes(normalize(parsed.status)) ? normalize(parsed.status) : 'todo';
+    const priority = PRIORITY_ENUM.includes(normalize(parsed.priority)) ? normalize(parsed.priority) : 'medium';
+    const assignees = Array.isArray(parsed.assignee_ids)
+      ? parsed.assignee_ids.filter((id) => memberIds.has(String(id)))
+      : [];
+    let dueDate;
+    if (parsed.due_date) {
+      const d = new Date(parsed.due_date);
+      if (!Number.isNaN(d.getTime())) dueDate = d;
+    }
+
+    const highest = await Task.findOne({ project: projectId, status }).sort('-position');
+    const task = await Task.create({
+      title: parsed.title.slice(0, 200),
+      description: typeof parsed.description === 'string' && parsed.description.trim() ? parsed.description.trim() : undefined,
+      project: projectId,
+      workspace: workspace._id,
+      status,
+      priority,
+      assignedTo: assignees,
+      dueDate,
+      position: highest ? highest.position + 1 : 0,
+      createdBy: req.user.id,
+    });
+
+    await task.populate('createdBy', 'name email avatar');
+    await task.populate('assignedTo', 'name email avatar');
+
+    res.status(201).json({
+      success: true,
+      aiAvailable,
+      task,
+      // What the parser picked up beyond the defaults — used for the success toast.
+      parsed: {
+        priority: priority !== 'medium' ? priority : null,
+        dueDate: dueDate || null,
+        assignees: task.assignedTo.map((u) => u.name),
+        status: status !== 'todo' ? status : null,
+      },
+    });
+  } catch (error) {
+    console.error('Quick add error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Meeting Notes → Tasks
+// ---------------------------------------------------------------------------
+
+const EXTRACT_SYSTEM = `You extract actionable tasks from meeting notes for a Kanban board.
+
+Rules:
+- Extract only concrete action items: things someone must DO. Skip decisions already made, FYIs, discussion summaries, and vague intentions with no clear action.
+- One item per distinct action. Merge duplicates. At most 12 items — keep the most important.
+- "title": short imperative phrase (max ~12 words), cleaned of names, dates and priority words.
+- "description": 1-2 sentences of context from the notes if genuinely useful, else null.
+- "priority": low|medium|high|urgent only when the notes state or clearly imply urgency ("asap"/"blocker"/"critical" → urgent), else null.
+- "due_date": when the notes give a time ("by Friday", "before the demo on the 20th"), resolve it by LOOKING UP the provided calendar (upcoming dates with weekday names) — never compute weekdays yourself. Mentioned weekday → the first calendar entry with that weekday after today. No date given → null; never invent one.
+- "assignee_ids": ids copied exactly from the member list when the notes name an owner ("Sam will…", "X to handle", "@X"). Match first names case-insensitively; "me"/"I" is the current user. If the named owner is NOT in the member list, leave assignee_ids empty and add "Owner per notes: <name>" to the description.
+- If the notes contain no action items, return {"items": []}.
+
+Respond with ONLY this JSON object:
+{"items": [{"title": string, "description": string|null, "priority": string|null, "due_date": "YYYY-MM-DD"|null, "assignee_ids": string[]}]}`;
+
+// @desc    Extract action items from pasted meeting notes (no DB writes — review first)
+// @route   POST /api/ai/projects/:projectId/extract-tasks
+// @access  Private
+const extractTasksFromNotes = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const notes = (req.body.notes || '').trim();
+
+    if (!notes) {
+      return res.status(400).json({ success: false, message: 'Paste some notes first' });
+    }
+    if (notes.length > 12000) {
+      return res.status(400).json({ success: false, message: 'Notes are too long (12,000 character limit)' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const ai = getClient();
+    if (!ai) {
+      return res.status(200).json({
+        success: true,
+        aiAvailable: false,
+        items: [],
+        message: 'Extracting tasks from notes needs an AI API key. Set AI_API_KEY in the backend .env to enable it.',
+      });
+    }
+
+    const members = await Workspace.findById(workspace._id)
+      .populate('members.user', 'name email')
+      .then((ws) => (ws?.members || []).map((m) => m.user).filter(Boolean));
+    const memberIds = new Set(members.map((u) => u._id.toString()));
+    memberIds.add(req.user.id.toString());
+    const memberById = new Map(members.map((u) => [u._id.toString(), u.name]));
+
+    const payload = {
+      notes,
+      calendar: buildCalendar(),
+      current_user: { id: req.user.id.toString(), name: req.user.name },
+      members: members.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email })),
+    };
+
+    const completion = await ai.chat.completions.create({
+      model: MODEL,
+      max_tokens: 1500,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: EXTRACT_SYSTEM },
+        { role: 'user', content: JSON.stringify(payload, null, 2) },
+      ],
+    });
+
+    const out = completion.choices?.[0]?.message?.content || '';
+    let rawItems = [];
+    try {
+      const parsed = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+      rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+    } catch (parseErr) {
+      console.error('Notes extraction parse error:', parseErr, 'raw:', out);
+      return res.status(502).json({ success: false, message: 'The AI returned an unreadable response — try again.' });
+    }
+
+    // Normalize and validate every item before it reaches the review UI.
+    const normalize = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
+    const items = rawItems
+      .filter((it) => it && typeof it.title === 'string' && it.title.trim())
+      .slice(0, 12)
+      .map((it) => {
+        const assignees = (Array.isArray(it.assignee_ids) ? it.assignee_ids : [])
+          .filter((id) => memberIds.has(String(id)))
+          .map((id) => ({ id: String(id), name: memberById.get(String(id)) || req.user.name }));
+        let dueDate = null;
+        if (it.due_date) {
+          const d = new Date(it.due_date);
+          if (!Number.isNaN(d.getTime())) dueDate = d;
+        }
+        return {
+          title: it.title.trim().slice(0, 200),
+          description:
+            typeof it.description === 'string' && it.description.trim() ? it.description.trim() : null,
+          priority: PRIORITY_ENUM.includes(normalize(it.priority)) ? normalize(it.priority) : null,
+          dueDate,
+          assignees,
+        };
+      });
+
+    res.status(200).json({ success: true, aiAvailable: true, items });
+  } catch (error) {
+    console.error('Extract tasks error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Bulk-create reviewed tasks (deterministic — no AI involved)
+// @route   POST /api/ai/projects/:projectId/bulk-create
+// @access  Private
+const bulkCreateTasks = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const items = Array.isArray(req.body.items) ? req.body.items.slice(0, 25) : [];
+
+    if (!items.length) {
+      return res.status(400).json({ success: false, message: 'No tasks to create' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember, workspace } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const members = await Workspace.findById(workspace._id).then((ws) =>
+      (ws?.members || []).map((m) => m.user.toString())
+    );
+    const memberIds = new Set(members);
+    memberIds.add(req.user.id.toString());
+
+    const highest = await Task.findOne({ project: projectId, status: 'todo' }).sort('-position');
+    let position = highest ? highest.position + 1 : 0;
+
+    const normalize = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
+    const created = [];
+    for (const it of items) {
+      if (!it || typeof it.title !== 'string' || !it.title.trim()) continue;
+      let dueDate;
+      if (it.dueDate) {
+        const d = new Date(it.dueDate);
+        if (!Number.isNaN(d.getTime())) dueDate = d;
+      }
+      const task = await Task.create({
+        title: it.title.trim().slice(0, 200),
+        description:
+          typeof it.description === 'string' && it.description.trim() ? it.description.trim() : undefined,
+        project: projectId,
+        workspace: workspace._id,
+        status: 'todo',
+        priority: PRIORITY_ENUM.includes(normalize(it.priority)) ? normalize(it.priority) : 'medium',
+        assignedTo: (Array.isArray(it.assigneeIds) ? it.assigneeIds : []).filter((id) =>
+          memberIds.has(String(id))
+        ),
+        dueDate,
+        position: position++,
+        createdBy: req.user.id,
+      });
+      await task.populate('createdBy', 'name email avatar');
+      await task.populate('assignedTo', 'name email avatar');
+      created.push(task);
+    }
+
+    if (!created.length) {
+      return res.status(400).json({ success: false, message: 'No valid tasks to create' });
+    }
+
+    res.status(201).json({ success: true, tasks: created });
+  } catch (error) {
+    console.error('Bulk create tasks error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  getVelocityInsights,
+  commandBoard,
+  getProjectHealth,
+  scanProjectHealth,
+  quickAddTask,
+  extractTasksFromNotes,
+  bulkCreateTasks,
+};
