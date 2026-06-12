@@ -732,6 +732,104 @@ const extractTasksFromNotes = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Epic Decomposition ("Plan with AI")
+// ---------------------------------------------------------------------------
+
+const DECOMPOSE_SYSTEM = `You are a senior project lead for TaskFlow, a Kanban app. You break a high-level goal (an "epic") into concrete, board-ready subtasks.
+
+Rules:
+- 5-10 subtasks covering the goal end to end, in logical execution order (setup → build → test → polish/ship).
+- Each subtask is one concrete deliverable a person could pick up and finish — not a vague phase ("do backend work") and not a micro-step ("open the editor").
+- "title": short imperative phrase (max ~10 words).
+- "description": 1-2 sentences — what "done" looks like, plus dependencies when relevant ("After the payment endpoint exists, …").
+- "priority": low|medium|high|urgent. Foundational/blocking work is high; polish is low; urgent is rare.
+- "estimated_minutes": honest rough effort for one person (between 30 and 960). Use null only if truly unguessable.
+- Tailor the plan to any details in the goal (stack, team size, deadline). Otherwise make reasonable modern choices — do not invent requirements the goal doesn't imply.
+- Align terminology with the provided project context.
+
+Respond with ONLY this JSON object:
+{"items": [{"title": string, "description": string|null, "priority": "low"|"medium"|"high"|"urgent", "estimated_minutes": number|null}]}`;
+
+// @desc    Break a high-level goal into board-ready subtasks (no DB writes — review first)
+// @route   POST /api/ai/projects/:projectId/decompose
+// @access  Private
+const decomposeProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const goal = (req.body.goal || '').trim();
+
+    if (!goal) {
+      return res.status(400).json({ success: false, message: 'Describe the goal first' });
+    }
+    if (goal.length > 1000) {
+      return res.status(400).json({ success: false, message: 'Keep the goal under 1,000 characters' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const ai = getClient();
+    if (!ai) {
+      return res.status(200).json({
+        success: true,
+        aiAvailable: false,
+        items: [],
+        message: 'Planning needs an AI API key. Set AI_API_KEY in the backend .env to enable it.',
+      });
+    }
+
+    const payload = {
+      goal,
+      project: { name: project.name, description: project.description || null },
+    };
+
+    const completion = await ai.chat.completions.create({
+      model: MODEL,
+      max_tokens: 1800,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: DECOMPOSE_SYSTEM },
+        { role: 'user', content: JSON.stringify(payload, null, 2) },
+      ],
+    });
+
+    const out = completion.choices?.[0]?.message?.content || '';
+    let rawItems = [];
+    try {
+      const parsed = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+      rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+    } catch (parseErr) {
+      console.error('Decompose parse error:', parseErr, 'raw:', out);
+      return res.status(502).json({ success: false, message: 'The AI returned an unreadable response — try again.' });
+    }
+
+    const normalize = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
+    const items = rawItems
+      .filter((it) => it && typeof it.title === 'string' && it.title.trim())
+      .slice(0, 12)
+      .map((it) => {
+        const mins = Number(it.estimated_minutes);
+        return {
+          title: it.title.trim().slice(0, 200),
+          description:
+            typeof it.description === 'string' && it.description.trim() ? it.description.trim() : null,
+          priority: PRIORITY_ENUM.includes(normalize(it.priority)) ? normalize(it.priority) : 'medium',
+          estimatedMinutes: Number.isFinite(mins) && mins > 0 ? Math.min(Math.round(mins), 6000) : null,
+          assignees: [],
+        };
+      });
+
+    res.status(200).json({ success: true, aiAvailable: true, items });
+  } catch (error) {
+    console.error('Decompose project error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    Bulk-create reviewed tasks (deterministic — no AI involved)
 // @route   POST /api/ai/projects/:projectId/bulk-create
 // @access  Private
@@ -768,6 +866,7 @@ const bulkCreateTasks = async (req, res) => {
         const d = new Date(it.dueDate);
         if (!Number.isNaN(d.getTime())) dueDate = d;
       }
+      const mins = Number(it.estimatedMinutes);
       const task = await Task.create({
         title: it.title.trim().slice(0, 200),
         description:
@@ -780,6 +879,7 @@ const bulkCreateTasks = async (req, res) => {
           memberIds.has(String(id))
         ),
         dueDate,
+        estimatedTime: Number.isFinite(mins) && mins > 0 ? Math.min(Math.round(mins), 6000) : undefined,
         position: position++,
         createdBy: req.user.id,
       });
@@ -806,5 +906,6 @@ module.exports = {
   scanProjectHealth,
   quickAddTask,
   extractTasksFromNotes,
+  decomposeProject,
   bulkCreateTasks,
 };
