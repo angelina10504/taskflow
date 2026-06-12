@@ -14,6 +14,7 @@ A full-stack, high-performance project management application inspired by Trello
 * **🩺 Proactive Risk Radar:** A scheduled health scan (daily cron + boot catch-up) that checks every active project for overdue work, stale tasks, and deadline slips — then pushes a live risk banner to everyone viewing the project via Socket.IO. No more "analytics you have to remember to check."
 * **✨ AI Quick-Add:** Type one line above the board — *"Fix login bug, urgent, due Friday, assign to Sam"* — and the parser extracts a clean title, priority, due date, and assignees into a properly structured task. Works without an AI key too (falls back to a plain task).
 * **📋 Meeting Notes → Tasks:** Paste raw standup notes, a Slack thread, or a transcript; the AI extracts the concrete action items (owners, deadlines, priorities) into a review checklist — tick what you want and they're bulk-created on the board. Decisions and FYIs are skipped automatically.
+* **🗺️ Plan with AI (Epic Decomposition):** Describe a big goal — *"build Stripe payment integration"* — and the AI drafts 5–10 ordered, board-ready subtasks with priorities and time estimates. Review the plan, untick steps, approve — and the estimates feed straight into Velocity Intelligence's forecasting.
 * **Multi-Tenant Workspaces:** Create distinct environments for different teams with Role-Based Access Control (Owner, Admin, Member, Viewer).
 * **Real-time Kanban:** Interactive board using `@dnd-kit` for smooth drag-and-drop. Task movements are synced across all active users in a project via **Socket.IO**.
 * **Smart Tasks:** Track priorities (Low to Urgent), assignees, labels, and estimated time. Automatic `completedAt` timestamps are generated when moved to "Done."
@@ -57,6 +58,12 @@ Review-first by design: extraction and creation are **separate endpoints**, so n
 * **Review checklist:** every extracted item (title, priority, due date, assignees, context) is shown in the UI with a toggle — untick anything before confirming.
 * **Bulk-create:** a deterministic endpoint (no AI involved) re-validates every field server-side and creates the approved tasks with correct board positions.
 
+### 🗺️ Plan with AI — `POST /api/ai/projects/:projectId/decompose`
+One sentence in, a trackable project plan out — what a team lead does at sprint kickoff, drafted by the model.
+* **Generates** 5–10 ordered subtasks for a stated goal: imperative titles, "what done looks like" descriptions with dependency notes, priorities (foundational work high, polish low), and honest per-task time estimates.
+* **Estimates compound:** suggested `estimated_minutes` land in the task's `estimatedTime` field, directly improving Velocity Intelligence's estimate coverage and remaining-effort forecasts.
+* **Same review-first flow:** the plan goes through the checklist UI and the shared deterministic `bulk-create` endpoint — the model proposes, the human approves, validated code writes.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -87,7 +94,7 @@ When a user opens a project, the client joins a specific Socket.IO room partitio
 * **Auto-Reconnect:** The frontend is configured with `reconnection: true` and a `1000ms` delay to handle network drops gracefully.
 
 ### 3. AI Layer
-A single, provider-agnostic `aiController` powers all five AI features. Hard metrics are computed in `utils/velocityStats.js` (deterministic), then passed to the model for interpretation (Velocity) or to an agentic tool-use loop (Command). Cloudinary is lazy-loaded so heavy/optional dependencies never block server startup.
+A single, provider-agnostic `aiController` powers all six AI features. Hard metrics are computed in `utils/velocityStats.js` (deterministic), then passed to the model for interpretation (Velocity) or to an agentic tool-use loop (Command). Cloudinary is lazy-loaded so heavy/optional dependencies never block server startup.
 
 ### 4. Database Entity Relationships
 The MongoDB schema is designed for multi-tenant scalability:
@@ -117,6 +124,7 @@ The MongoDB schema is designed for multi-tenant scalability:
 | POST | `/projects/:projectId/health/scan` | Run a Risk Radar scan now (broadcasts to the project's socket room) |
 | POST | `/projects/:projectId/quick-add` | Parse one line of natural language into a structured task |
 | POST | `/projects/:projectId/extract-tasks` | Extract action items from pasted meeting notes (review-first, no writes) |
+| POST | `/projects/:projectId/decompose` | Break a high-level goal into ordered, estimated subtasks (review-first, no writes) |
 | POST | `/projects/:projectId/bulk-create` | Bulk-create the approved tasks from the review step |
 
 ### 🏢 Workspaces (`/api/workspaces`) - *Protected*

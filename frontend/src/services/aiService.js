@@ -50,6 +50,16 @@ export const extractTasksFromNotes = async (projectId, notes) => {
   }
 };
 
+// Break a high-level goal into board-ready subtasks (review-first: no tasks created yet)
+export const decomposeProject = async (projectId, goal) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/decompose`, { goal });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to draft a plan' };
+  }
+};
+
 // Bulk-create the approved tasks from the review step
 export const bulkCreateTasks = async (projectId, items) => {
   try {

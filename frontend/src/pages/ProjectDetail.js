@@ -6,6 +6,7 @@ import CommandBoard from '../components/ai/CommandBoard';
 import RiskBanner from '../components/ai/RiskBanner';
 import QuickAddBar from '../components/ai/QuickAddBar';
 import MeetingNotesModal from '../components/ai/MeetingNotesModal';
+import PlanProjectModal from '../components/ai/PlanProjectModal';
 import EditProjectModal from '../components/project/EditProjectModal';
 import * as taskService from '../services/taskService';
 import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
@@ -14,7 +15,7 @@ import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
 import useColors from '../hooks/useColors';
-import { LuZap, LuSparkles, LuPencil, LuFileText } from 'react-icons/lu';
+import { LuZap, LuSparkles, LuPencil, LuFileText, LuListTree } from 'react-icons/lu';
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const ProjectDetail = () => {
   const [commandOpen, setCommandOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
 
   const handleProjectSave = async (data) => {
@@ -158,6 +160,18 @@ const ProjectDetail = () => {
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setPlanOpen(true)}
+              color={textSecondary}
+              _hover={{ bg: hoverBg, color: textPrimary }}
+              _active={{ transform: 'scale(0.98)' }}
+              aria-label="Break a goal into subtasks with AI"
+            >
+              <LuListTree size={14} />
+              Plan
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setNotesOpen(true)}
               color={textSecondary}
               _hover={{ bg: hoverBg, color: textPrimary }}
@@ -261,6 +275,13 @@ const ProjectDetail = () => {
       <MeetingNotesModal
         isOpen={notesOpen}
         onClose={() => setNotesOpen(false)}
+        projectId={id}
+        onTasksCreated={handleNotesTasksCreated}
+      />
+
+      <PlanProjectModal
+        isOpen={planOpen}
+        onClose={() => setPlanOpen(false)}
         projectId={id}
         onTasksCreated={handleNotesTasksCreated}
       />
