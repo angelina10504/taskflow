@@ -4,6 +4,8 @@ import KanbanBoard from '../components/task/KanbanBoard';
 import VelocityInsights from '../components/ai/VelocityInsights';
 import CommandBoard from '../components/ai/CommandBoard';
 import RiskBanner from '../components/ai/RiskBanner';
+import QuickAddBar from '../components/ai/QuickAddBar';
+import MeetingNotesModal from '../components/ai/MeetingNotesModal';
 import EditProjectModal from '../components/project/EditProjectModal';
 import * as taskService from '../services/taskService';
 import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
@@ -12,7 +14,7 @@ import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
 import useColors from '../hooks/useColors';
-import { LuZap, LuSparkles, LuPencil } from 'react-icons/lu';
+import { LuZap, LuSparkles, LuPencil, LuFileText } from 'react-icons/lu';
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -28,6 +30,7 @@ const ProjectDetail = () => {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
 
   const handleProjectSave = async (data) => {
@@ -51,6 +54,16 @@ const ProjectDetail = () => {
   const handleCommandTasks = (updatedTasks) => {
     setTasks(updatedTasks);
     setBoardKey((k) => k + 1); // remount the board so it reflects bulk changes
+  };
+
+  const handleQuickAddTask = (task) => {
+    setTasks((prev) => [...prev, task]);
+    setBoardKey((k) => k + 1);
+  };
+
+  const handleNotesTasksCreated = (newTasks) => {
+    setTasks((prev) => [...prev, ...newTasks]);
+    setBoardKey((k) => k + 1);
   };
 
   useEffect(() => { fetchProject(); }, [id]);
@@ -145,6 +158,18 @@ const ProjectDetail = () => {
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setNotesOpen(true)}
+              color={textSecondary}
+              _hover={{ bg: hoverBg, color: textPrimary }}
+              _active={{ transform: 'scale(0.98)' }}
+              aria-label="Extract tasks from meeting notes"
+            >
+              <LuFileText size={14} />
+              Notes
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setCommandOpen(true)}
               color={textSecondary}
               _hover={{ bg: hoverBg, color: textPrimary }}
@@ -197,7 +222,10 @@ const ProjectDetail = () => {
         border="1px solid"
         borderColor={border}
       >
-        <Heading size="md" mb={4} color={textPrimary} flexShrink={0}>Tasks</Heading>
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={4} mb={4} flexShrink={0}>
+          <Heading size="md" color={textPrimary} flexShrink={0}>Tasks</Heading>
+          <QuickAddBar projectId={id} onTaskCreated={handleQuickAddTask} />
+        </Box>
         {tasksLoading ? (
           <Center flex={1}><Spinner size="lg" color="purple.400" /></Center>
         ) : (
@@ -228,6 +256,13 @@ const ProjectDetail = () => {
         onClose={() => setCommandOpen(false)}
         projectId={id}
         onTasksChanged={handleCommandTasks}
+      />
+
+      <MeetingNotesModal
+        isOpen={notesOpen}
+        onClose={() => setNotesOpen(false)}
+        projectId={id}
+        onTasksCreated={handleNotesTasksCreated}
       />
 
       <EditProjectModal

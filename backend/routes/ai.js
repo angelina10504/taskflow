@@ -4,6 +4,9 @@ const {
   commandBoard,
   getProjectHealth,
   scanProjectHealth,
+  quickAddTask,
+  extractTasksFromNotes,
+  bulkCreateTasks,
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
@@ -15,5 +18,8 @@ router.get('/projects/:projectId/velocity', getVelocityInsights);
 router.post('/projects/:projectId/command', commandBoard);
 router.get('/projects/:projectId/health', getProjectHealth);
 router.post('/projects/:projectId/health/scan', scanProjectHealth);
+router.post('/projects/:projectId/quick-add', quickAddTask);
+router.post('/projects/:projectId/extract-tasks', extractTasksFromNotes);
+router.post('/projects/:projectId/bulk-create', bulkCreateTasks);
 
 module.exports = router;
