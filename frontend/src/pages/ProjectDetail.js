@@ -9,19 +9,20 @@ import MeetingNotesModal from '../components/ai/MeetingNotesModal';
 import PlanProjectModal from '../components/ai/PlanProjectModal';
 import EditProjectModal from '../components/project/EditProjectModal';
 import * as taskService from '../services/taskService';
-import { Box, Button, Heading, Text, Spinner, Center } from '@chakra-ui/react';
+import { Box, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 import { toaster } from '../components/ui/toaster';
 import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
 import socket from '../services/socketService';
 import useColors from '../hooks/useColors';
-import { LuZap, LuSparkles, LuPencil, LuFileText, LuListTree } from 'react-icons/lu';
+import { LuPencil } from 'react-icons/lu';
+import AIToolbar from '../components/ai/AIToolbar';
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { panelBg, border, hoverBg, textPrimary, textSecondary, textMuted } = useColors();
+  const { dark, panelBg, border, hoverBg, textPrimary, textSecondary, textMuted } = useColors();
 
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,7 +120,21 @@ const ProjectDetail = () => {
     'member';
 
   return (
-    <Box h="100vh" display="flex" flexDirection="column" overflow="hidden" px={6} pt={5} pb={5}>
+    <Box h="100vh" display="flex" flexDirection="column" overflow="hidden" px={6} pt={5} pb={5} position="relative">
+      {/* Soft brand glow behind the header */}
+      <Box
+        position="absolute"
+        top="-160px"
+        left="50%"
+        transform="translateX(-50%)"
+        w="900px"
+        h="420px"
+        pointerEvents="none"
+        zIndex={0}
+        style={{
+          background: `radial-gradient(ellipse at center, rgba(99,102,241,${dark ? 0.1 : 0.06}) 0%, transparent 65%)`,
+        }}
+      />
       {/* Breadcrumb */}
       <Box mb={3} display="flex" gap={2} alignItems="center" fontSize="sm" color={textMuted} flexShrink={0}>
         <Text cursor="pointer" _hover={{ color: 'purple.400' }} onClick={() => navigate('/workspaces')}>
@@ -144,74 +159,44 @@ const ProjectDetail = () => {
         <Box display="flex" alignItems="center" gap={3} mb={1}>
           <Text fontSize="2xl">{project.icon || '📊'}</Text>
           <Heading size="lg" color={textPrimary}>{project.name}</Heading>
+          <Box
+            as="button"
+            onClick={() => setEditOpen(true)}
+            title="Edit project details"
+            aria-label="Edit project details"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            w="28px"
+            h="28px"
+            borderRadius="md"
+            border="none"
+            bg="transparent"
+            color={textMuted}
+            cursor="pointer"
+            transition="all 0.15s"
+            _hover={{ bg: hoverBg, color: textPrimary }}
+          >
+            <LuPencil size={14} />
+          </Box>
           {project.status === 'archived' && (
             <Box px={3} py={1} bg="orange.100" color="orange.700" borderRadius="md" fontSize="sm" fontWeight="medium">
               📦 Archived
             </Box>
           )}
-          <Box ml="auto" display="flex" gap={2}>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditOpen(true)}
-              color={textSecondary}
-              _hover={{ bg: hoverBg, color: textPrimary }}
-              _active={{ transform: 'scale(0.98)' }}
-              aria-label="Edit project"
-            >
-              <LuPencil size={14} />
-              Edit
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setPlanOpen(true)}
-              color={textSecondary}
-              _hover={{ bg: hoverBg, color: textPrimary }}
-              _active={{ transform: 'scale(0.98)' }}
-              aria-label="Break a goal into subtasks with AI"
-            >
-              <LuListTree size={14} />
-              Plan
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setNotesOpen(true)}
-              color={textSecondary}
-              _hover={{ bg: hoverBg, color: textPrimary }}
-              _active={{ transform: 'scale(0.98)' }}
-              aria-label="Extract tasks from meeting notes"
-            >
-              <LuFileText size={14} />
-              Notes
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setCommandOpen(true)}
-              color={textSecondary}
-              _hover={{ bg: hoverBg, color: textPrimary }}
-              _active={{ transform: 'scale(0.98)' }}
-            >
-              <LuZap size={15} />
-              Command
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setInsightsOpen(true)}
-              style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
-              color="white"
-              _hover={{ opacity: 0.9 }}
-              _active={{ transform: 'scale(0.98)' }}
-            >
-              <LuSparkles size={15} />
-              AI Insights
-            </Button>
-          </Box>
+          <AIToolbar
+            onPlan={() => setPlanOpen(true)}
+            onNotes={() => setNotesOpen(true)}
+            onCommand={() => setCommandOpen(true)}
+            onInsights={() => setInsightsOpen(true)}
+          />
         </Box>
-        {project.description && (
+        {project.description ? (
           <Text color={textSecondary} fontSize="sm" mb={2}>{project.description}</Text>
+        ) : (
+          <Text color={textMuted} fontSize="sm" mb={2} fontStyle="italic">
+            No description yet — click the pencil to add one.
+          </Text>
         )}
         <Box display="flex" gap={4} fontSize="xs" color={textMuted}>
           {project.deadline && <Text>📅 Due: {new Date(project.deadline).toLocaleDateString()}</Text>}
