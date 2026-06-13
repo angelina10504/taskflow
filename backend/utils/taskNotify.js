@@ -17,10 +17,17 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
     const ids = [...new Set((addedIds || []).map(String))].filter(
       (id) => id !== String(assignerId)
     );
-    if (!ids.length) return;
+    if (!ids.length) {
+      console.log('[notify] no new assignees to email (empty, or self-assignment)');
+      return;
+    }
 
     const users = await User.find({ _id: { $in: ids } }).select('name email emailNotifications');
-    if (!users.length) return;
+    if (!users.length) {
+      console.log('[notify] assignees resolved to 0 users — nothing to email');
+      return;
+    }
+    console.log(`[notify] emailing ${users.length} assignee(s): ${users.map((u) => u.email).join(', ')}`);
 
     const projectName = project?.name || 'a project';
     const url = `${process.env.CLIENT_URL || ''}/projects/${project?._id || task.project}`;
@@ -58,7 +65,10 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
 </div>`;
 
     for (const u of users) {
-      if (u.emailNotifications === false) continue; // user opted out
+      if (u.emailNotifications === false) {
+        console.log(`[notify] ${u.email} has email notifications OFF — skipped`);
+        continue; // user opted out
+      }
       sendMail({
         to: u.email,
         subject,

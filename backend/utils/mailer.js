@@ -46,11 +46,20 @@ const sendMail = async ({ to, subject, text, html, icalEvent }) => {
       html,
       ...(icalEvent ? { icalEvent } : {}),
     });
+    console.log(`[mailer] sent → ${to} (id: ${info.messageId})`);
     return { ok: true, messageId: info.messageId };
   } catch (err) {
     console.error(`[mailer] send failed → ${to}:`, err.message);
     return { error: err.message };
   }
 };
+
+// Log mail configuration status once at startup so it's obvious whether
+// assignment emails will actually send.
+console.log(
+  isMailConfigured()
+    ? `[mailer] ✅ email ENABLED (host: ${process.env.SMTP_HOST}, user: ${process.env.SMTP_USER})`
+    : '[mailer] ⚠️  email DISABLED — SMTP_* env vars missing/placeholder; assignment emails will be skipped'
+);
 
 module.exports = { sendMail, isMailConfigured };
