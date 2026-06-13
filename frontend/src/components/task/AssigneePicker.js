@@ -19,6 +19,11 @@ const AssigneePicker = ({ members = [], value = [], onChange, currentUserId, cur
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
   };
 
+  // Only members whose `user` was populated (has a name) can be shown as chips.
+  // If the API returned bare ids (e.g. an old backend without the deep populate),
+  // say so explicitly instead of rendering an empty box.
+  const usable = members.filter((m) => m.user && typeof m.user === 'object' && m.user.name);
+
   if (!members.length) {
     return (
       <Text fontSize="sm" color="gray.500">
@@ -27,12 +32,20 @@ const AssigneePicker = ({ members = [], value = [], onChange, currentUserId, cur
     );
   }
 
+  if (!usable.length) {
+    return (
+      <Text fontSize="sm" color="gray.500">
+        Couldn’t load members — try refreshing the page.
+      </Text>
+    );
+  }
+
   return (
     <Box display="flex" gap={2} flexWrap="wrap">
-      {members.map((m) => {
-        const u = m.user || {};
+      {usable.map((m) => {
+        const u = m.user;
         const id = String(u._id || '');
-        if (!id || !u.name) return null;
+        if (!id) return null;
         const selected = value.includes(id);
         const isSelf = id === String(currentUserId);
         const allowed = canAssignOthers || isSelf;
