@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { sendMail } = require('./mailer');
-const { buildTaskICS } = require('./ics');
+const { buildTaskICS, buildGoogleCalendarLink } = require('./ics');
 
 const escapeHtml = (s = '') =>
   String(s)
@@ -31,7 +31,13 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
 
     const projectName = project?.name || 'a project';
     const url = `${process.env.CLIENT_URL || ''}/projects/${project?._id || task.project}`;
-    const ics = buildTaskICS({ task, projectName, url });
+    const gcalUrl = buildGoogleCalendarLink({ task, projectName, url });
+    // The invite's organizer must be the visible from-address, not the SMTP
+    // relay login (with Brevo those differ).
+    const organizerEmail =
+      ((process.env.MAIL_FROM || '').match(/<([^>]+)>/) || [])[1] ||
+      process.env.MAIL_FROM ||
+      process.env.SMTP_USER;
 
     const due = task.dueDate ? new Date(task.dueDate).toDateString() : null;
     const metaBits = [
@@ -47,7 +53,8 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
       `  ${metaBits}`,
       '',
       `Open the board: ${url}`,
-      ...(ics ? ['', 'The attached calendar invite adds the due date to your calendar.'] : []),
+      ...(gcalUrl ? ['', `Add the due date to Google Calendar: ${gcalUrl}`] : []),
+      ...(task.dueDate ? ['The attached invite (.ics) works with Outlook and Apple Calendar too.'] : []),
     ].join('\n');
 
     const html = `
@@ -60,7 +67,8 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
       <div style="font-size:13px;color:#6b7280">${escapeHtml(metaBits)}</div>
     </div>
     <a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#6366f1,#a855f7);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Open in TaskFlow</a>
-    ${ics ? '<p style="font-size:12px;color:#9ca3af;margin:16px 0 0">The attached invite adds the due date to your calendar.</p>' : ''}
+    ${gcalUrl ? `<a href="${gcalUrl}" style="display:inline-block;margin-left:10px;border:1px solid #6366f1;color:#6366f1;text-decoration:none;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600">📅 Add to Google Calendar</a>` : ''}
+    ${task.dueDate ? '<p style="font-size:12px;color:#9ca3af;margin:16px 0 0">Prefer Outlook or Apple Calendar? The attached invite (.ics) works there too.</p>' : ''}
   </div>
 </div>`;
 
@@ -69,12 +77,22 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
         console.log(`[notify] ${u.email} has email notifications OFF — skipped`);
         continue; // user opted out
       }
+      // Per-recipient METHOD:REQUEST invite (organizer + attendee) — that's
+      // what makes Gmail/Outlook show the native "Add to calendar" card
+      // instead of a bare .ics attachment.
+      const ics = buildTaskICS({
+        task,
+        projectName,
+        url,
+        organizerEmail,
+        attendee: { name: u.name, email: u.email },
+      });
       sendMail({
         to: u.email,
         subject,
         text,
         html,
-        icalEvent: ics ? { method: 'PUBLISH', filename: 'task.ics', content: ics } : undefined,
+        icalEvent: ics ? { method: 'REQUEST', filename: 'invite.ics', content: ics } : undefined,
       });
     }
   } catch (err) {
