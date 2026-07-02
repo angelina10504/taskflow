@@ -65,6 +65,13 @@ One sentence in, a trackable project plan out — what a team lead does at sprin
 * **Estimates compound:** suggested `estimated_minutes` land in the task's `estimatedTime` field, directly improving Velocity Intelligence's estimate coverage and remaining-effort forecasts.
 * **Same review-first flow:** the plan goes through the checklist UI and the shared deterministic `bulk-create` endpoint — the model proposes, the human approves, validated code writes.
 
+### 🔎 Ask your board — `GET …/search` · `POST …/similar` · `POST …/ask` (RAG)
+Semantic memory for the project: every task is embedded and retrievable by *meaning*, so "payment bug" finds *Fix Stripe webhook 500s* with zero shared words.
+* **Local embeddings, zero cost:** `all-MiniLM-L6-v2` runs in-process via Transformers.js (ONNX) — no API key, no rate limits, nothing leaves the server. Vectors are maintained fire-and-forget by Task model hooks (a task write is never slowed), plus a one-time `npm run embed:backfill`.
+* **Atlas Vector Search with a fallback:** the vector index is created programmatically at boot; retrieval uses `$vectorSearch` (ANN, scales past what a demo needs) and silently falls back to exact in-memory cosine when the index isn't available — the feature can't hard-fail.
+* **Grounded Q&A with citations:** "what's blocking the launch?" → the closest tasks are retrieved, and the model must answer *only* from them, citing `[n]` chips that map to the source cards below the answer. No AI key? It degrades to pure semantic search — retrieval is local.
+* **Duplicate detection at create time:** typing a title in *Add Task* runs a debounced similarity check and warns "possible duplicate — already on the board (91% match)" before a copy gets created. Advisory, never blocking.
+
 ### 🧪 Prompt evals — `npm run eval` (backend/evals)
 Prompts are code, so they have a test suite: 65 golden cases scored deterministically (no LLM-as-judge) against the **exact production prompts**, imported from the controller rather than copied.
 * **What's covered:** 50 quick-add parses (title cleanup, priorities, calendar date resolution, roster-exact assignees, trap cases like a client named *"Friday's Diner"*), 9 meeting-notes extractions **including 2 prompt-injection attacks**, and 6 structural plan decompositions.
@@ -81,7 +88,7 @@ Prompts are code, so they have a test suite: 65 golden cases scored deterministi
 | :--- | :--- |
 | **Frontend** | React 19, React Router 7, Chakra UI 3 |
 | **Backend** | Node.js, Express 5, MongoDB + Mongoose, Socket.IO |
-| **AI** | OpenAI SDK against any OpenAI-compatible endpoint (default: **Groq** / Llama 3.3 70B); structured JSON output + tool-use |
+| **AI** | OpenAI SDK against any OpenAI-compatible endpoint (default: **Groq** / Llama 3.3 70B); structured JSON output + tool-use; local MiniLM embeddings (Transformers.js) + MongoDB Atlas Vector Search for RAG |
 | **Authentication** | JWT (15m Access + 7d Refresh), bcryptjs (10 rounds), Google OAuth |
 | **State & HTTP** | Context API, Axios (with interceptors) |
 | **Drag & Drop** | `@dnd-kit` |
@@ -135,6 +142,9 @@ The MongoDB schema is designed for multi-tenant scalability:
 | POST | `/projects/:projectId/extract-tasks` | Extract action items from pasted meeting notes (review-first, no writes) |
 | POST | `/projects/:projectId/decompose` | Break a high-level goal into ordered, estimated subtasks (review-first, no writes) |
 | POST | `/projects/:projectId/bulk-create` | Bulk-create the approved tasks from the review step |
+| GET | `/projects/:projectId/search` | Semantic search over the project's tasks (meaning, not keywords) |
+| POST | `/projects/:projectId/similar` | Near-duplicate / related tasks for a draft title (create-flow warning) |
+| POST | `/projects/:projectId/ask` | RAG Q&A: retrieve the closest tasks, answer only from them, cite sources |
 
 ### 🏢 Workspaces (`/api/workspaces`) - *Protected*
 | Method | Endpoint | Description |

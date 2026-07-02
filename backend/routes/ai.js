@@ -8,6 +8,9 @@ const {
   extractTasksFromNotes,
   decomposeProject,
   bulkCreateTasks,
+  semanticSearch,
+  findSimilarTasks,
+  askBoard,
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
@@ -23,5 +26,8 @@ router.post('/projects/:projectId/quick-add', quickAddTask);
 router.post('/projects/:projectId/extract-tasks', extractTasksFromNotes);
 router.post('/projects/:projectId/decompose', decomposeProject);
 router.post('/projects/:projectId/bulk-create', bulkCreateTasks);
+router.get('/projects/:projectId/search', semanticSearch);
+router.post('/projects/:projectId/similar', findSimilarTasks);
+router.post('/projects/:projectId/ask', askBoard);
 
 module.exports = router;

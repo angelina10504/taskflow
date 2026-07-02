@@ -6,6 +6,7 @@ const { computeVelocityStats } = require('../utils/velocityStats');
 const { getClient, MODEL } = require('../utils/aiClient');
 const { scanProject } = require('../utils/riskRadar');
 const { notifyAssignment } = require('../utils/taskNotify');
+const { searchTasks, findSimilar } = require('../utils/taskSearch');
 
 const checkWorkspaceMembership = async (workspaceId, userId) => {
   const workspace = await Workspace.findById(workspaceId);
@@ -970,6 +971,160 @@ const bulkCreateTasks = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Semantic search & Ask-your-board (RAG)
+// ---------------------------------------------------------------------------
+
+// Compact result shape shared by the RAG endpoints (never leaks embeddings).
+const searchResultShape = (t) => ({
+  _id: t._id,
+  title: t.title,
+  description: t.description || null,
+  status: t.status,
+  priority: t.priority,
+  dueDate: t.dueDate || null,
+  assignedTo: (t.assignedTo || []).map((u) =>
+    u && u.name ? { _id: u._id, name: u.name } : { _id: u }
+  ),
+  score: Math.round((t.score || 0) * 100) / 100,
+});
+
+// @desc    Semantic search across the project's tasks (meaning, not keywords)
+// @route   GET /api/ai/projects/:projectId/search?q=...
+// @access  Private (any member, viewers included — read-only)
+const semanticSearch = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const q = (req.query.q || '').trim();
+    if (!q) return res.status(400).json({ success: false, message: 'Type something to search for' });
+    if (q.length > 300) {
+      return res.status(400).json({ success: false, message: 'Keep searches under 300 characters' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const { results, method } = await searchTasks({ projectId, query: q, k: 8 });
+    await Task.populate(results, { path: 'assignedTo', select: 'name' });
+
+    res.status(200).json({ success: true, method, results: results.map(searchResultShape) });
+  } catch (error) {
+    console.error('Semantic search error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Near-duplicate / related tasks for a draft title (create flow)
+// @route   POST /api/ai/projects/:projectId/similar
+// @access  Private
+const findSimilarTasks = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const text = [req.body.title, req.body.description].filter(Boolean).join('\n').trim();
+    // Too little text to compare meaningfully — an empty answer, not an error.
+    if (text.length < 6) return res.status(200).json({ success: true, results: [] });
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const results = await findSimilar({ projectId, text: text.slice(0, 500), k: 3, minScore: 0.6 });
+    await Task.populate(results, { path: 'assignedTo', select: 'name' });
+
+    res.status(200).json({ success: true, results: results.map(searchResultShape) });
+  } catch (error) {
+    console.error('Similar tasks error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+const ASK_SYSTEM = `You answer questions about one Kanban project board. You get the user's question plus the most relevant tasks retrieved from the board — your ONLY source of truth.
+
+Rules:
+- Answer ONLY from the provided tasks. If they don't contain the answer, say plainly that the board doesn't show it — never invent tasks, people, or dates.
+- Cite tasks inline with their bracket number, e.g. "The checkout fix [2] is in review." Every claim about a specific task needs its citation.
+- "today" is provided; a task is overdue when its due_date is before today and its status is not done.
+- Be brief: 1-4 sentences, or a short list when the question asks for several things.
+
+Respond with ONLY this JSON object:
+{"answer": string, "cited": number[]}`;
+
+// @desc    Grounded Q&A over the project's tasks (RAG) — cites its sources
+// @route   POST /api/ai/projects/:projectId/ask
+// @access  Private (any member, viewers included — read-only)
+const askBoard = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const question = (req.body.question || '').trim();
+    if (!question) return res.status(400).json({ success: false, message: 'Ask something first' });
+    if (question.length > 300) {
+      return res.status(400).json({ success: false, message: 'Keep questions under 300 characters' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    const { isMember } = await checkWorkspaceMembership(project.workspace, req.user.id);
+    if (!isMember) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const { results } = await searchTasks({ projectId, query: question, k: 10 });
+    await Task.populate(results, { path: 'assignedTo', select: 'name' });
+    const sources = results.map(searchResultShape);
+
+    const ai = getClient();
+    // No AI key (or nothing to ground on): still return the retrieved tasks —
+    // the feature degrades to pure semantic search instead of failing.
+    if (!ai || !sources.length) {
+      return res.status(200).json({ success: true, aiAvailable: !!ai, answer: null, cited: [], sources });
+    }
+
+    const payload = {
+      question,
+      today: new Date().toISOString().slice(0, 10),
+      tasks: sources.map((t, i) => ({
+        n: i + 1,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        due_date: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 10) : null,
+        assignees: t.assignedTo.map((u) => u.name).filter(Boolean),
+        description: t.description ? String(t.description).slice(0, 200) : null,
+      })),
+    };
+
+    const completion = await ai.chat.completions.create({
+      model: MODEL,
+      max_tokens: 400,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: ASK_SYSTEM },
+        { role: 'user', content: JSON.stringify(payload, null, 2) },
+      ],
+    });
+
+    const out = completion.choices?.[0]?.message?.content || '';
+    let answer = null;
+    let cited = [];
+    try {
+      const parsed = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+      if (typeof parsed.answer === 'string' && parsed.answer.trim()) answer = parsed.answer.trim();
+      if (Array.isArray(parsed.cited)) {
+        cited = parsed.cited.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= sources.length);
+      }
+    } catch (parseErr) {
+      console.error('Ask board parse error:', parseErr, 'raw:', out);
+      // Fall through: the user still gets the retrieved sources.
+    }
+
+    res.status(200).json({ success: true, aiAvailable: true, answer, cited, sources });
+  } catch (error) {
+    console.error('Ask board error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getVelocityInsights,
   commandBoard,
@@ -979,6 +1134,9 @@ module.exports = {
   extractTasksFromNotes,
   decomposeProject,
   bulkCreateTasks,
+  semanticSearch,
+  findSimilarTasks,
+  askBoard,
 };
 
 // Internals exposed ONLY for the eval harness (backend/evals), so evals always

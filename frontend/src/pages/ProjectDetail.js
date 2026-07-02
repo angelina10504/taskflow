@@ -7,6 +7,7 @@ import RiskBanner from '../components/ai/RiskBanner';
 import QuickAddBar from '../components/ai/QuickAddBar';
 import MeetingNotesModal from '../components/ai/MeetingNotesModal';
 import PlanProjectModal from '../components/ai/PlanProjectModal';
+import AskBoardModal from '../components/ai/AskBoardModal';
 import EditProjectModal from '../components/project/EditProjectModal';
 import * as taskService from '../services/taskService';
 import { Box, Heading, Text, Spinner, Center } from '@chakra-ui/react';
@@ -34,6 +35,7 @@ const ProjectDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
 
   const handleProjectSave = async (data) => {
@@ -188,6 +190,7 @@ const ProjectDetail = () => {
             onPlan={() => setPlanOpen(true)}
             onNotes={() => setNotesOpen(true)}
             onCommand={() => setCommandOpen(true)}
+            onAsk={() => setAskOpen(true)}
             onInsights={() => setInsightsOpen(true)}
           />
         </Box>
@@ -277,6 +280,8 @@ const ProjectDetail = () => {
         projectId={id}
         onTasksCreated={handleNotesTasksCreated}
       />
+
+      <AskBoardModal isOpen={askOpen} onClose={() => setAskOpen(false)} projectId={id} />
 
       <EditProjectModal
         isOpen={editOpen}
