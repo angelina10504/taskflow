@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text } from '@chakra-ui/react';
-import { LuListTree, LuFileText, LuZap, LuSparkles } from 'react-icons/lu';
+import { LuListTree, LuFileText, LuZap, LuSparkles, LuSearch } from 'react-icons/lu';
 import useColors from '../../hooks/useColors';
 
 // The project's AI feature dock: a gradient-ringed pill grouping the four AI
@@ -29,6 +29,14 @@ const TOOLS = [
     color: '#fbbf24',
     tint: 'rgba(251,191,36,0.14)',
     desc: 'Tell the board what to do in plain English',
+  },
+  {
+    key: 'ask',
+    label: 'Ask',
+    icon: LuSearch,
+    color: '#22d3ee',
+    tint: 'rgba(34,211,238,0.14)',
+    desc: 'Search by meaning & ask questions about this board',
   },
 ];
 
@@ -67,10 +75,10 @@ const Tooltip = ({ text, dark }) => (
   </Box>
 );
 
-const AIToolbar = ({ onPlan, onNotes, onCommand, onInsights }) => {
+const AIToolbar = ({ onPlan, onNotes, onCommand, onAsk, onInsights }) => {
   const [hovered, setHovered] = useState(null);
   const { dark, panelBg, textSecondary, textPrimary } = useColors();
-  const handlers = { plan: onPlan, notes: onNotes, command: onCommand };
+  const handlers = { plan: onPlan, notes: onNotes, command: onCommand, ask: onAsk };
 
   return (
     <Box

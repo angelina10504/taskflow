@@ -79,3 +79,33 @@ export const runHealthScan = async (projectId) => {
     throw error.response?.data || { message: 'Health scan failed' };
   }
 };
+
+// Semantic search across the project's tasks (matches meaning, not keywords)
+export const semanticSearch = async (projectId, q) => {
+  try {
+    const response = await api.get(`/api/ai/projects/${projectId}/search`, { params: { q } });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Search failed' };
+  }
+};
+
+// Near-duplicate / related tasks for a draft title (used by the create flow)
+export const findSimilarTasks = async (projectId, { title, description }) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/similar`, { title, description });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Similarity check failed' };
+  }
+};
+
+// Ask a question about the board — answers are grounded in retrieved tasks with citations
+export const askBoard = async (projectId, question) => {
+  try {
+    const response = await api.post(`/api/ai/projects/${projectId}/ask`, { question });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Ask failed' };
+  }
+};

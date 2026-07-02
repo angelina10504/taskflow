@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Button, Input, Heading, Text } from '@chakra-ui/react';
 import useColors from '../../hooks/useColors';
 import AssigneePicker from './AssigneePicker';
+import * as aiService from '../../services/aiService';
 
 const EMPTY_FORM = {
   title: '',
@@ -26,7 +27,30 @@ const CreateTaskModal = ({
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [similar, setSimilar] = useState([]);
+  const similarTimer = useRef(null);
   const { dark, cardBg, inputBg, border, textPrimary, textSecondary } = useColors();
+
+  // Debounced semantic duplicate check while the title is typed. Advisory
+  // only — it warns, it never blocks creating the task.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const title = formData.title.trim();
+    if (title.length < 8) {
+      setSimilar([]);
+      return undefined;
+    }
+    clearTimeout(similarTimer.current);
+    similarTimer.current = setTimeout(async () => {
+      try {
+        const res = await aiService.findSimilarTasks(projectId, { title });
+        setSimilar(res.results || []);
+      } catch (e) {
+        setSimilar([]);
+      }
+    }, 600);
+    return () => clearTimeout(similarTimer.current);
+  }, [formData.title, isOpen, projectId]);
 
   const selectStyle = {
     width: '100%',
@@ -151,6 +175,31 @@ const CreateTaskModal = ({
               />
               {errors.title && (
                 <Text color="red.400" fontSize="sm" mt={1}>{errors.title}</Text>
+              )}
+              {similar.length > 0 && (
+                <Box
+                  mt={2}
+                  px={3}
+                  py={2}
+                  borderRadius="md"
+                  border="1px solid"
+                  borderColor="rgba(245,158,11,0.45)"
+                  bg="rgba(245,158,11,0.08)"
+                >
+                  <Text fontSize="xs" fontWeight="600" color="#f59e0b" mb={1}>
+                    {similar[0].score >= 0.8
+                      ? 'Possible duplicate — already on the board:'
+                      : 'Similar tasks already on the board:'}
+                  </Text>
+                  {similar.map((s) => (
+                    <Text key={s._id} fontSize="xs" color={textSecondary} lineClamp={1}>
+                      • {s.title}{' '}
+                      <Text as="span" color="#f59e0b">
+                        ({Math.round(s.score * 100)}% match · {(s.status || '').replace('_', ' ')})
+                      </Text>
+                    </Text>
+                  ))}
+                </Box>
               )}
             </Box>
 

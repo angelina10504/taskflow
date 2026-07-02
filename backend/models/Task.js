@@ -65,6 +65,21 @@ const taskSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
     },
+    // Semantic search (RAG): MiniLM vector of title+description, maintained by
+    // utils/taskSearch. select:false keeps the 384 floats out of every API
+    // response — fetch explicitly with .select('+embedding') when needed.
+    embedding: {
+      type: [Number],
+      select: false,
+    },
+    embeddingModel: {
+      type: String,
+      select: false,
+    },
+    embeddedAt: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -82,6 +97,29 @@ taskSchema.pre('save', function () {
     } else if (this.status !== 'done') {
       this.completedAt = undefined;
     }
+  }
+});
+
+// Keep the semantic-search vector in sync with the task's text. The flag is
+// captured pre-save (modified paths are cleared after the write) and the
+// embedding runs fire-and-forget post-save so requests are never slowed.
+// taskSearch is required lazily to avoid a model↔util require cycle; its
+// updateOne write bypasses these hooks, so this cannot loop.
+taskSchema.pre('save', function () {
+  this.$locals.embedStale = this.isNew || this.isModified('title') || this.isModified('description');
+});
+
+taskSchema.post('save', function (doc) {
+  if (!doc.$locals.embedStale) return;
+  require('../utils/taskSearch').ensureTaskEmbedding(doc);
+});
+
+taskSchema.post('findOneAndUpdate', function (doc) {
+  if (!doc) return;
+  const update = this.getUpdate() || {};
+  const set = update.$set || update;
+  if (set.title !== undefined || set.description !== undefined) {
+    require('../utils/taskSearch').ensureTaskEmbedding(doc);
   }
 });
 
