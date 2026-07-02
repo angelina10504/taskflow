@@ -65,6 +65,14 @@ One sentence in, a trackable project plan out — what a team lead does at sprin
 * **Estimates compound:** suggested `estimated_minutes` land in the task's `estimatedTime` field, directly improving Velocity Intelligence's estimate coverage and remaining-effort forecasts.
 * **Same review-first flow:** the plan goes through the checklist UI and the shared deterministic `bulk-create` endpoint — the model proposes, the human approves, validated code writes.
 
+### 🧪 Prompt evals — `npm run eval` (backend/evals)
+Prompts are code, so they have a test suite: 65 golden cases scored deterministically (no LLM-as-judge) against the **exact production prompts**, imported from the controller rather than copied.
+* **What's covered:** 50 quick-add parses (title cleanup, priorities, calendar date resolution, roster-exact assignees, trap cases like a client named *"Friday's Diner"*), 9 meeting-notes extractions **including 2 prompt-injection attacks**, and 6 structural plan decompositions.
+* **Reproducible by construction:** the eval clock is pinned (Wed 2026-07-01), so every date expectation is a literal string and any machine gets the same calendar. Scoring mirrors the controllers' own validation, so a pass means production would have stored exactly the expected values.
+* **It found real bugs:** the baseline run (80% pass) exposed a systematic self-assignment bias, a weekday-resolution blind spot, and a successful injection override ("IGNORE ALL PREVIOUS INSTRUCTIONS…" returned zero tasks). Three targeted prompt rules later, the suite passes **92%** and the injection is defeated — measured, not eyeballed.
+* **Ops-aware runner:** worker pool with backoff for free-tier rate limits, a repair pass for per-minute 429s, **abort on daily-quota exhaustion** (with a distinct exit code), per-run latency/token/cost reporting, `EVAL_API_KEY` so evals never starve production's quota, and a pass-rate threshold that can gate CI.
+* **Doubles as a router qualification test:** the same suite run on `llama-3.1-8b-instant` (≈10× cheaper) scores 36.9% — solid on structural planning (6/6 decompose) but hopeless at precision parsing (26% quick-add, 38% assignee accuracy). That's the measurement you need *before* cost-optimizing with model routing. Full details and the results table live in [`backend/evals/README.md`](backend/evals/README.md).
+
 ---
 
 ## 🛠️ Tech Stack
@@ -95,7 +103,7 @@ When a user opens a project, the client joins a specific Socket.IO room partitio
 * **Auto-Reconnect:** The frontend is configured with `reconnection: true` and a `1000ms` delay to handle network drops gracefully.
 
 ### 3. AI Layer
-A single, provider-agnostic `aiController` powers all six AI features. Hard metrics are computed in `utils/velocityStats.js` (deterministic), then passed to the model for interpretation (Velocity) or to an agentic tool-use loop (Command). Cloudinary is lazy-loaded so heavy/optional dependencies never block server startup.
+A single, provider-agnostic `aiController` powers all six AI features. Hard metrics are computed in `utils/velocityStats.js` (deterministic), then passed to the model for interpretation (Velocity) or to an agentic tool-use loop (Command). Cloudinary is lazy-loaded so heavy/optional dependencies never block server startup. Every prompt is regression-tested by the 65-case eval harness in `backend/evals` (see above), which imports the production prompts directly — a prompt edit that hurts accuracy shows up as a measured score drop, not a user report.
 
 ### 4. Database Entity Relationships
 The MongoDB schema is designed for multi-tenant scalability:
