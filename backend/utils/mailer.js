@@ -13,16 +13,34 @@ const isMailConfigured = () =>
   !isPlaceholder(process.env.SMTP_USER) &&
   !isPlaceholder(process.env.SMTP_PASS);
 
-const getTransporter = () => {
+// nodemailer 8 resolves the SMTP host to BOTH A and AAAA records and picks one
+// AT RANDOM per connection — on IPv4-only hosts (e.g. Render) every IPv6 pick
+// dies with ENETUNREACH. Resolving to an IPv4 address ourselves sidesteps its
+// resolver (IP literals pass straight through), while `tls.servername` keeps
+// certificate validation pinned to the real hostname.
+const resolveIPv4 = async (host) => {
+  if (require('net').isIP(host)) return host;
+  try {
+    const addrs = await require('dns').promises.resolve4(host);
+    if (addrs && addrs.length) return addrs[0];
+  } catch (err) {
+    console.warn(`[mailer] IPv4 resolution failed for ${host} (${err.code || err.message}) — using hostname`);
+  }
+  return host;
+};
+
+const getTransporter = async () => {
   if (!isMailConfigured()) return null;
   if (transporter) return transporter;
   if (!nodemailer) nodemailer = require('nodemailer');
+  const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT) || 587;
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: await resolveIPv4(host),
     port,
     secure: port === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    tls: { servername: host },
   });
   return transporter;
 };
@@ -32,7 +50,7 @@ const fromAddress = () => process.env.MAIL_FROM || `TaskFlow <${process.env.SMTP
 // Send an email. Never throws — failures are logged and reported in the result
 // so callers can fire-and-forget without taking down a request.
 const sendMail = async ({ to, subject, text, html, icalEvent }) => {
-  const t = getTransporter();
+  const t = await getTransporter();
   if (!t) {
     console.log(`[mailer] SMTP not configured — skipped "${subject}" → ${to}`);
     return { skipped: true };
@@ -50,6 +68,11 @@ const sendMail = async ({ to, subject, text, html, icalEvent }) => {
     return { ok: true, messageId: info.messageId };
   } catch (err) {
     console.error(`[mailer] send failed → ${to}:`, err.message);
+    // A network-level failure may mean the resolved IP went stale — drop the
+    // cached transport so the next send re-resolves fresh.
+    if (/ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(err.message)) {
+      transporter = null;
+    }
     return { error: err.message };
   }
 };
