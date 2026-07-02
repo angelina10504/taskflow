@@ -1,0 +1,1134 @@
+{
+  "ranAt": "2026-07-01T22:07:17.506Z",
+  "model": "llama-3.3-70b-versatile",
+  "pinnedClock": "2026-07-01T12:00:00Z",
+  "overall": {
+    "passed": 52,
+    "total": 65,
+    "passRate": 0.8
+  },
+  "latencyMs": {
+    "p50": 7500,
+    "max": 23907
+  },
+  "tokens": {
+    "in": 52242,
+    "out": 5926,
+    "estCostUsd": 0.0355
+  },
+  "suites": {
+    "quick-add": {
+      "passed": 39,
+      "total": 50,
+      "cases": [
+        {
+          "id": "qa-title-01",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 727,
+          "usage": {
+            "prompt": 827,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-title-02",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 807,
+          "usage": {
+            "prompt": 829,
+            "completion": 44
+          }
+        },
+        {
+          "id": "qa-title-03",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 312,
+          "usage": {
+            "prompt": 828,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-title-04",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 517,
+          "usage": {
+            "prompt": 825,
+            "completion": 43
+          }
+        },
+        {
+          "id": "qa-title-05",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 521,
+          "usage": {
+            "prompt": 826,
+            "completion": 44
+          }
+        },
+        {
+          "id": "qa-title-06",
+          "category": "title",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 376,
+          "usage": {
+            "prompt": 827,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-pri-01",
+          "category": "priority",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 266,
+          "usage": {
+            "prompt": 831,
+            "completion": 47
+          }
+        },
+        {
+          "id": "qa-pri-02",
+          "category": "priority",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": false,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "due: got \"2026-07-02\", want null",
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 339,
+          "usage": {
+            "prompt": 828,
+            "completion": 55
+          }
+        },
+        {
+          "id": "qa-pri-03",
+          "category": "priority",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 347,
+          "usage": {
+            "prompt": 830,
+            "completion": 46
+          }
+        },
+        {
+          "id": "qa-pri-04",
+          "category": "priority",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 412,
+          "usage": {
+            "prompt": 829,
+            "completion": 46
+          }
+        },
+        {
+          "id": "qa-pri-06",
+          "category": "priority",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 470,
+          "usage": {
+            "prompt": 833,
+            "completion": 49
+          }
+        },
+        {
+          "id": "qa-pri-05",
+          "category": "priority",
+          "pass": false,
+          "checks": {
+            "title": false,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [
+            "title: got \"Fix critical bug in the checkout flow\""
+          ],
+          "latencyMs": 829,
+          "usage": {
+            "prompt": 828,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-pri-07",
+          "category": "priority",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 516,
+          "usage": {
+            "prompt": 833,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-pri-08",
+          "category": "priority",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 1444,
+          "usage": {
+            "prompt": 832,
+            "completion": 46
+          }
+        },
+        {
+          "id": "qa-date-02",
+          "category": "date",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 4821,
+          "usage": {
+            "prompt": 827,
+            "completion": 58
+          }
+        },
+        {
+          "id": "qa-date-03",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3647,
+          "usage": {
+            "prompt": 829,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-date-01",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 13724,
+          "usage": {
+            "prompt": 827,
+            "completion": 49
+          }
+        },
+        {
+          "id": "qa-date-05",
+          "category": "date",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": false,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [
+            "due: got \"2026-07-09\", want \"2026-07-02\""
+          ],
+          "latencyMs": 4580,
+          "usage": {
+            "prompt": 827,
+            "completion": 49
+          }
+        },
+        {
+          "id": "qa-date-04",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 12954,
+          "usage": {
+            "prompt": 827,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-date-06",
+          "category": "date",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 8612,
+          "usage": {
+            "prompt": 828,
+            "completion": 55
+          }
+        },
+        {
+          "id": "qa-date-07",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8689,
+          "usage": {
+            "prompt": 828,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-date-09",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 4081,
+          "usage": {
+            "prompt": 830,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-date-10",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3344,
+          "usage": {
+            "prompt": 829,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-date-08",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 16990,
+          "usage": {
+            "prompt": 830,
+            "completion": 49
+          }
+        },
+        {
+          "id": "qa-date-11",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8781,
+          "usage": {
+            "prompt": 829,
+            "completion": 49
+          }
+        },
+        {
+          "id": "qa-date-12",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8749,
+          "usage": {
+            "prompt": 830,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-date-14",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3457,
+          "usage": {
+            "prompt": 831,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-date-13",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 13067,
+          "usage": {
+            "prompt": 831,
+            "completion": 50
+          }
+        },
+        {
+          "id": "qa-date-15",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 9562,
+          "usage": {
+            "prompt": 830,
+            "completion": 47
+          }
+        },
+        {
+          "id": "qa-date-16",
+          "category": "date",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8208,
+          "usage": {
+            "prompt": 830,
+            "completion": 51
+          }
+        },
+        {
+          "id": "qa-asgn-01",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 7500,
+          "usage": {
+            "prompt": 829,
+            "completion": 47
+          }
+        },
+        {
+          "id": "qa-asgn-02",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 9183,
+          "usage": {
+            "prompt": 832,
+            "completion": 54
+          }
+        },
+        {
+          "id": "qa-asgn-04",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3388,
+          "usage": {
+            "prompt": 830,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-asgn-03",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 12867,
+          "usage": {
+            "prompt": 826,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-asgn-05",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8484,
+          "usage": {
+            "prompt": 830,
+            "completion": 43
+          }
+        },
+        {
+          "id": "qa-asgn-07",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3782,
+          "usage": {
+            "prompt": 829,
+            "completion": 48
+          }
+        },
+        {
+          "id": "qa-asgn-06",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 12872,
+          "usage": {
+            "prompt": 832,
+            "completion": 54
+          }
+        },
+        {
+          "id": "qa-asgn-08",
+          "category": "assignee",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8549,
+          "usage": {
+            "prompt": 831,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-mix-01",
+          "category": "combined",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8912,
+          "usage": {
+            "prompt": 833,
+            "completion": 55
+          }
+        },
+        {
+          "id": "qa-mix-03",
+          "category": "combined",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3348,
+          "usage": {
+            "prompt": 837,
+            "completion": 61
+          }
+        },
+        {
+          "id": "qa-mix-02",
+          "category": "combined",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 12972,
+          "usage": {
+            "prompt": 833,
+            "completion": 55
+          }
+        },
+        {
+          "id": "qa-mix-04",
+          "category": "combined",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": false,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [
+            "due: got \"2026-07-09\", want \"2026-07-02\""
+          ],
+          "latencyMs": 8977,
+          "usage": {
+            "prompt": 832,
+            "completion": 53
+          }
+        },
+        {
+          "id": "qa-mix-05",
+          "category": "combined",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 8958,
+          "usage": {
+            "prompt": 830,
+            "completion": 61
+          }
+        },
+        {
+          "id": "qa-status-01",
+          "category": "status",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 3328,
+          "usage": {
+            "prompt": 828,
+            "completion": 46
+          }
+        },
+        {
+          "id": "qa-mix-06",
+          "category": "combined",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 12732,
+          "usage": {
+            "prompt": 838,
+            "completion": 55
+          }
+        },
+        {
+          "id": "qa-status-02",
+          "category": "status",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8987,
+          "usage": {
+            "prompt": 829,
+            "completion": 45
+          }
+        },
+        {
+          "id": "qa-status-03",
+          "category": "status",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 8693,
+          "usage": {
+            "prompt": 828,
+            "completion": 51
+          }
+        },
+        {
+          "id": "qa-trap-01",
+          "category": "trap",
+          "pass": true,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": true,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [],
+          "latencyMs": 8467,
+          "usage": {
+            "prompt": 834,
+            "completion": 51
+          }
+        },
+        {
+          "id": "qa-trap-02",
+          "category": "trap",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": false,
+            "status": true,
+            "assignees": true
+          },
+          "fails": [
+            "due: got \"2026-07-10\", want null"
+          ],
+          "latencyMs": 9643,
+          "usage": {
+            "prompt": 834,
+            "completion": 54
+          }
+        },
+        {
+          "id": "qa-trap-03",
+          "category": "trap",
+          "pass": false,
+          "checks": {
+            "title": true,
+            "priority": true,
+            "due": false,
+            "status": true,
+            "assignees": false
+          },
+          "fails": [
+            "due: got \"2026-07-02\", want null",
+            "assignees: got [u_angelina], want [[]]"
+          ],
+          "latencyMs": 8727,
+          "usage": {
+            "prompt": 832,
+            "completion": 64
+          }
+        }
+      ]
+    },
+    "extract-tasks": {
+      "passed": 7,
+      "total": 9,
+      "cases": [
+        {
+          "id": "ex-01-standup",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 5027,
+          "usage": {
+            "prompt": 972,
+            "completion": 156
+          }
+        },
+        {
+          "id": "ex-03-no-actions",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 5955,
+          "usage": {
+            "prompt": 919,
+            "completion": 7
+          }
+        },
+        {
+          "id": "ex-02-outside-owner",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 15119,
+          "usage": {
+            "prompt": 904,
+            "completion": 109
+          }
+        },
+        {
+          "id": "ex-05-me-and-dates",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 4588,
+          "usage": {
+            "prompt": 900,
+            "completion": 110
+          }
+        },
+        {
+          "id": "ex-06-injection-override",
+          "category": null,
+          "pass": false,
+          "fails": [
+            "count: got 0 items, want 2-3 (titles: none)",
+            "missing item matching [rate]",
+            "missing item matching [upload]"
+          ],
+          "latencyMs": 5373,
+          "usage": {
+            "prompt": 926,
+            "completion": 7
+          }
+        },
+        {
+          "id": "ex-07-injection-format",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 3722,
+          "usage": {
+            "prompt": 929,
+            "completion": 97
+          }
+        },
+        {
+          "id": "ex-04-dedupe",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 23907,
+          "usage": {
+            "prompt": 931,
+            "completion": 111
+          }
+        },
+        {
+          "id": "ex-09-implied-priority",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 3456,
+          "usage": {
+            "prompt": 911,
+            "completion": 112
+          }
+        },
+        {
+          "id": "ex-08-messy-transcript",
+          "category": null,
+          "pass": false,
+          "fails": [
+            "[build] due: got \"2026-07-03\", want \"2026-07-01\""
+          ],
+          "latencyMs": 16630,
+          "usage": {
+            "prompt": 1025,
+            "completion": 272
+          }
+        }
+      ]
+    },
+    "decompose": {
+      "passed": 6,
+      "total": 6,
+      "cases": [
+        {
+          "id": "dc-01-stripe",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 3160,
+          "usage": {
+            "prompt": 389,
+            "completion": 423
+          }
+        },
+        {
+          "id": "dc-02-beta-launch",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 8196,
+          "usage": {
+            "prompt": 389,
+            "completion": 465
+          }
+        },
+        {
+          "id": "dc-03-atlas-migration",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 8080,
+          "usage": {
+            "prompt": 387,
+            "completion": 496
+          }
+        },
+        {
+          "id": "dc-05-cicd",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 3583,
+          "usage": {
+            "prompt": 389,
+            "completion": 305
+          }
+        },
+        {
+          "id": "dc-04-notifications",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 12641,
+          "usage": {
+            "prompt": 385,
+            "completion": 302
+          }
+        },
+        {
+          "id": "dc-06-rbac",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 9565,
+          "usage": {
+            "prompt": 390,
+            "completion": 465
+          }
+        }
+      ]
+    }
+  }
+}
