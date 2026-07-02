@@ -41,6 +41,10 @@ const getTransporter = async () => {
     secure: port === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     tls: { servername: host },
+    // Fail fast: a firewalled port should surface in seconds, not hang the
+    // default 2 minutes (emails are fire-and-forget, but logs read better).
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
   });
   return transporter;
 };
@@ -70,7 +74,7 @@ const sendMail = async ({ to, subject, text, html, icalEvent }) => {
     console.error(`[mailer] send failed → ${to}:`, err.message);
     // A network-level failure may mean the resolved IP went stale — drop the
     // cached transport so the next send re-resolves fresh.
-    if (/ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(err.message)) {
+    if (/ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|ECONNREFUSED|ECONNRESET|timeout/i.test(`${err.code} ${err.message}`)) {
       transporter = null;
     }
     return { error: err.message };
