@@ -1,3 +1,8 @@
+// Prefer IPv4 for outbound connections. Hosts like Render have no IPv6 route,
+// and Node ≥17 otherwise tries IPv6 first for dual-stack hosts (smtp.gmail.com)
+// → "connect ENETUNREACH 2607:..." before the connection is even attempted.
+require('dns').setDefaultResultOrder('ipv4first');
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
