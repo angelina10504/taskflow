@@ -102,7 +102,7 @@ const Workspaces = () => {
         </Box>
         <Button
           size="lg"
-          style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
+          style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)', color: 'white' }}
           _hover={{ opacity: 0.9 }}
           onClick={() => setIsCreateModalOpen(true)}
         >
@@ -112,7 +112,7 @@ const Workspaces = () => {
 
       {isLoading ? (
         <Center py={20}>
-          <Spinner size="xl" color="purple.400" />
+          <Spinner size="xl" color="brand.500" />
         </Center>
       ) : workspaces.length === 0 ? (
         <Box textAlign="center" py={20}>
@@ -124,7 +124,7 @@ const Workspaces = () => {
             Create your first workspace to get started
           </Text>
           <Button
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)', color: 'white' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)', color: 'white' }}
             _hover={{ opacity: 0.9 }}
             onClick={() => setIsCreateModalOpen(true)}
           >

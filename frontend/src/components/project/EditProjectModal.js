@@ -12,11 +12,11 @@ import {
 import useColors from '../../hooks/useColors';
 
 const COLORS = [
-  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Indigo', value: '#7a1f3d' },
   { name: 'Green', value: '#10b981' },
   { name: 'Red', value: '#ef4444' },
   { name: 'Yellow', value: '#f59e0b' },
-  { name: 'Purple', value: '#a855f7' },
+  { name: 'Purple', value: '#a83a58' },
   { name: 'Pink', value: '#ec4899' },
   { name: 'Blue', value: '#3b82f6' },
   { name: 'Teal', value: '#14b8a6' },
@@ -28,7 +28,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: '#6366f1',
+    color: '#7a1f3d',
     icon: '📊',
     deadline: '',
   });
@@ -42,7 +42,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
       setFormData({
         name: project.name || '',
         description: project.description || '',
-        color: project.color || '#6366f1',
+        color: project.color || '#7a1f3d',
         icon: project.icon || '📊',
         deadline: project.deadline ? new Date(project.deadline).toISOString().slice(0, 10) : '',
       });
@@ -106,7 +106,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={errors.name ? 'red.500' : border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
               {errors.name && (
                 <Text color="red.400" fontSize="sm" mt={1}>{errors.name}</Text>
@@ -125,7 +125,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
 
@@ -142,11 +142,11 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
                     fontSize="xl"
                     borderRadius="md"
                     border="2px solid"
-                    borderColor={formData.icon === icon ? 'purple.400' : border}
-                    bg={formData.icon === icon ? (dark ? '#2d1a5e' : 'purple.50') : inputBg}
+                    borderColor={formData.icon === icon ? 'brand.500' : border}
+                    bg={formData.icon === icon ? (dark ? '#2d1a5e' : 'brand.50') : inputBg}
                     cursor="pointer"
                     transition="all 0.15s"
-                    _hover={{ borderColor: 'purple.400' }}
+                    _hover={{ borderColor: 'brand.500' }}
                     onClick={() => setFormData((prev) => ({ ...prev, icon }))}
                   >
                     {icon}
@@ -189,7 +189,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
           </form>
@@ -209,7 +209,7 @@ const EditProjectModal = ({ isOpen, onClose, onSave, project }) => {
           <Button
             type="submit"
             form="edit-project-form"
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
             disabled={isLoading}

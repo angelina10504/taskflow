@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import KanbanBoard from '../components/task/KanbanBoard';
-import VelocityInsights from '../components/ai/VelocityInsights';
-import CommandBoard from '../components/ai/CommandBoard';
-import RiskBanner from '../components/ai/RiskBanner';
+import IntelligencePanel from '../components/ai/IntelligencePanel';
+import CommandDock from '../components/ai/CommandDock';
 import QuickAddBar from '../components/ai/QuickAddBar';
 import MeetingNotesModal from '../components/ai/MeetingNotesModal';
 import PlanProjectModal from '../components/ai/PlanProjectModal';
@@ -30,8 +29,8 @@ const ProjectDetail = () => {
   const [tasks, setTasks] = useState([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  const [commandOpen, setCommandOpen] = useState(false);
+  const [intelOpen, setIntelOpen] = useState(false);
+  const commandFocusRef = useRef(null);
   const [editOpen, setEditOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
@@ -73,6 +72,18 @@ const ProjectDetail = () => {
 
   useEffect(() => { fetchProject(); }, [id]);
 
+  // Cmd/Ctrl+K summons the command bar from anywhere on the page.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        commandFocusRef.current?.();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     socket.emit('join-project', {
@@ -113,7 +124,7 @@ const ProjectDetail = () => {
     }
   };
 
-  if (isLoading) return <Center h="100vh"><Spinner size="xl" color="blue.500" /></Center>;
+  if (isLoading) return <Center h="100vh"><Spinner size="xl" color="brand.600" /></Center>;
   if (!project) return null;
 
   const workspaceMembers = project.workspace?.members || [];
@@ -134,16 +145,16 @@ const ProjectDetail = () => {
         pointerEvents="none"
         zIndex={0}
         style={{
-          background: `radial-gradient(ellipse at center, rgba(99,102,241,${dark ? 0.1 : 0.06}) 0%, transparent 65%)`,
+          background: `radial-gradient(ellipse at center, rgba(122,31,61,${dark ? 0.1 : 0.06}) 0%, transparent 65%)`,
         }}
       />
       {/* Breadcrumb */}
       <Box mb={3} display="flex" gap={2} alignItems="center" fontSize="sm" color={textMuted} flexShrink={0}>
-        <Text cursor="pointer" _hover={{ color: 'purple.400' }} onClick={() => navigate('/workspaces')}>
+        <Text cursor="pointer" _hover={{ color: 'brand.500' }} onClick={() => navigate('/workspaces')}>
           Workspaces
         </Text>
         <Text>›</Text>
-        <Text cursor="pointer" _hover={{ color: 'purple.400' }}
+        <Text cursor="pointer" _hover={{ color: 'brand.500' }}
           onClick={() => navigate(`/workspaces/${project.workspace._id || project.workspace}`)}
         >
           {project.workspace.name || 'Workspace'}
@@ -156,7 +167,7 @@ const ProjectDetail = () => {
       <Box
         bg={panelBg} px={5} py={4} borderRadius="lg" mb={4} flexShrink={0}
         border="1px solid" borderColor={border}
-        borderLeft="4px solid" borderLeftColor={project.color || 'purple.500'}
+        borderLeft="4px solid" borderLeftColor={project.color || 'brand.600'}
       >
         <Box display="flex" alignItems="center" gap={3} mb={1}>
           <Text fontSize="2xl">{project.icon || '📊'}</Text>
@@ -189,9 +200,9 @@ const ProjectDetail = () => {
           <AIToolbar
             onPlan={() => setPlanOpen(true)}
             onNotes={() => setNotesOpen(true)}
-            onCommand={() => setCommandOpen(true)}
+            onCommand={() => commandFocusRef.current?.()}
             onAsk={() => setAskOpen(true)}
-            onInsights={() => setInsightsOpen(true)}
+            onInsights={() => setIntelOpen((v) => !v)}
           />
         </Box>
         {project.description ? (
@@ -208,11 +219,12 @@ const ProjectDetail = () => {
         </Box>
       </Box>
 
-      {/* Risk Radar health banner */}
-      <RiskBanner
+      {/* Velocity Intelligence — always above the fold, expands in place */}
+      <IntelligencePanel
         projectId={id}
         socket={socket}
-        onOpenDetails={() => setInsightsOpen(true)}
+        expanded={intelOpen}
+        onExpandedChange={setIntelOpen}
       />
 
       {/* Tasks / Kanban — fills remaining height */}
@@ -234,7 +246,7 @@ const ProjectDetail = () => {
           <QuickAddBar projectId={id} onTaskCreated={handleQuickAddTask} />
         </Box>
         {tasksLoading ? (
-          <Center flex={1}><Spinner size="lg" color="purple.400" /></Center>
+          <Center flex={1}><Spinner size="lg" color="brand.500" /></Center>
         ) : (
           <Box flex={1} overflow="hidden">
             <KanbanBoard
@@ -254,17 +266,12 @@ const ProjectDetail = () => {
         )}
       </Box>
 
-      <VelocityInsights
-        isOpen={insightsOpen}
-        onClose={() => setInsightsOpen(false)}
-        projectId={id}
-      />
-
-      <CommandBoard
-        isOpen={commandOpen}
-        onClose={() => setCommandOpen(false)}
+      {/* Command the Board — the board's command line, ⌘K away */}
+      <CommandDock
         projectId={id}
         onTasksChanged={handleCommandTasks}
+        focusRef={commandFocusRef}
+        readOnly={currentUserRole === 'viewer'}
       />
 
       <MeetingNotesModal

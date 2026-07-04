@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Box, Input, Spinner } from '@chakra-ui/react';
-import { LuSparkles, LuCornerDownLeft } from 'react-icons/lu';
+import { LuDiamond, LuCornerDownLeft } from 'react-icons/lu';
 import { toaster } from '../ui/toaster';
 import * as aiService from '../../services/aiService';
 import useColors from '../../hooks/useColors';
+import { gold } from './primitives';
 
 // One-line natural-language task input: "Fix login bug, urgent, due Friday, assign to Angelina"
 const QuickAddBar = ({ projectId, onTaskCreated }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const { inputBg, border, textPrimary, textMuted } = useColors();
+  const { dark, inputBg, border, textPrimary, textMuted } = useColors();
+  const g = gold(dark);
 
   const submit = async () => {
     const value = text.trim();
@@ -52,12 +54,12 @@ const QuickAddBar = ({ projectId, onTaskCreated }) => {
         left="12px"
         top="50%"
         transform="translateY(-50%)"
-        color="#a855f7"
+        color={g.base}
         pointerEvents="none"
         display="flex"
         zIndex={1}
       >
-        <LuSparkles size={14} />
+        <LuDiamond size={13} strokeWidth={2.5} />
       </Box>
       <Input
         size="sm"
@@ -74,7 +76,7 @@ const QuickAddBar = ({ projectId, onTaskCreated }) => {
         borderColor={border}
         borderRadius="lg"
         disabled={loading}
-        _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+        _focus={{ borderColor: g.ring, boxShadow: `0 0 0 3px ${g.tint}` }}
         _placeholder={{ color: textMuted }}
       />
       <Box
@@ -88,7 +90,7 @@ const QuickAddBar = ({ projectId, onTaskCreated }) => {
         pointerEvents="none"
       >
         {loading ? (
-          <Spinner size="xs" color="purple.400" />
+          <Spinner size="xs" color="brand.500" />
         ) : text.trim() ? (
           <LuCornerDownLeft size={13} />
         ) : null}

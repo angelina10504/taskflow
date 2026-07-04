@@ -20,7 +20,7 @@ const projectSchema = new mongoose.Schema(
     },
     color: {
       type: String,
-      default: '#6366f1', // Default indigo color
+      default: '#7a1f3d', // Default wine color
     },
     icon: {
       type: String,

@@ -12,11 +12,11 @@ import {
 import useColors from '../../hooks/useColors';
 
 const COLORS = [
-  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Indigo', value: '#7a1f3d' },
   { name: 'Green', value: '#10b981' },
   { name: 'Red', value: '#ef4444' },
   { name: 'Yellow', value: '#f59e0b' },
-  { name: 'Purple', value: '#a855f7' },
+  { name: 'Purple', value: '#a83a58' },
   { name: 'Pink', value: '#ec4899' },
   { name: 'Blue', value: '#3b82f6' },
   { name: 'Teal', value: '#14b8a6' },
@@ -28,7 +28,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: '#6366f1',
+    color: '#7a1f3d',
     icon: '📊',
     deadline: '',
   });
@@ -55,7 +55,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
     setIsLoading(true);
     try {
       await onCreate({ ...formData, workspace: workspaceId });
-      setFormData({ name: '', description: '', color: '#6366f1', icon: '📊', deadline: '' });
+      setFormData({ name: '', description: '', color: '#7a1f3d', icon: '📊', deadline: '' });
       onClose();
     } catch (error) {
       // Error handled in parent
@@ -65,7 +65,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
   };
 
   const handleClose = () => {
-    setFormData({ name: '', description: '', color: '#6366f1', icon: '📊', deadline: '' });
+    setFormData({ name: '', description: '', color: '#7a1f3d', icon: '📊', deadline: '' });
     setErrors({});
     onClose();
   };
@@ -93,7 +93,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={errors.name ? 'red.500' : border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
               {errors.name && (
                 <Text color="red.400" fontSize="sm" mt={1}>{errors.name}</Text>
@@ -112,7 +112,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
 
@@ -129,11 +129,11 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                     fontSize="xl"
                     borderRadius="md"
                     border="2px solid"
-                    borderColor={formData.icon === icon ? 'purple.400' : border}
-                    bg={formData.icon === icon ? (dark ? '#2d1a5e' : 'purple.50') : inputBg}
+                    borderColor={formData.icon === icon ? 'brand.500' : border}
+                    bg={formData.icon === icon ? (dark ? '#2d1a5e' : 'brand.50') : inputBg}
                     cursor="pointer"
                     transition="all 0.15s"
-                    _hover={{ borderColor: 'purple.400' }}
+                    _hover={{ borderColor: 'brand.500' }}
                     onClick={() => setFormData((prev) => ({ ...prev, icon }))}
                   >
                     {icon}
@@ -176,7 +176,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
           </form>
@@ -196,7 +196,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate, workspaceId }) => {
           <Button
             type="submit"
             form="create-project-form"
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
             disabled={isLoading}

@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: 'https://ui-avatars.com/api/?background=6366f1&color=fff&name=User',
+      default: 'https://ui-avatars.com/api/?background=7a1f3d&color=fff&name=User',
     },
     bio: {
       type: String,

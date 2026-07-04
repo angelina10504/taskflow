@@ -28,7 +28,7 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
       transition="border-color 0.15s ease, transform 0.15s ease"
       border="1px solid"
       borderColor={border}
-      _hover={{ borderColor: '#818cf8', transform: 'translateY(-1px)' }}
+      _hover={{ borderColor: '#cd6785', transform: 'translateY(-1px)' }}
       onClick={onClick}
     >
       <Heading
@@ -57,7 +57,7 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
             onClick={(e) => e.stopPropagation()}
             style={{
               fontSize: '12px',
-              color: '#818cf8',
+              color: '#cd6785',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
@@ -140,7 +140,7 @@ const TaskCard = ({ task, onClick, workspaceMemberCount }) => {
                   fontWeight="bold"
                   color="white"
                   title={user.name}
-                  style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                  style={avatarSrc ? {} : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                 >
                   {avatarSrc ? (
                     <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />

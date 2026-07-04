@@ -14,7 +14,7 @@ const ProjectCard = ({ project, onClick, onDelete, canDelete }) => {
       cursor="pointer"
       transition="all 0.2s"
       borderLeft="4px solid"
-      borderLeftColor={project.color || 'blue.500'}
+      borderLeftColor={project.color || 'brand.600'}
       border="1px solid"
       borderColor={border}
       _hover={{ boxShadow: 'xl', transform: 'translateY(-2px)' }}
@@ -48,7 +48,7 @@ const ProjectCard = ({ project, onClick, onDelete, canDelete }) => {
 
         {canDelete && (
           <Button
-            size="sm" colorScheme="red" variant="ghost"
+            size="sm" colorPalette="red" variant="ghost"
             onClick={(e) => { e.stopPropagation(); onDelete(project._id); }}
           >
             Delete

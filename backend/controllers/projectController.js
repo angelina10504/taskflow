@@ -132,7 +132,7 @@ const createProject = async (req, res) => {
       name,
       description,
       workspace: workspaceId,
-      color: color || '#6366f1',
+      color: color || '#7a1f3d',
       icon: icon || '📊',
       deadline,
       createdBy: req.user.id,

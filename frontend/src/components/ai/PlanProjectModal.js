@@ -9,7 +9,7 @@ import {
   DialogBackdrop,
   DialogCloseTrigger,
 } from '../ui/dialog';
-import { LuListTree, LuSparkles, LuCheck, LuArrowLeft } from 'react-icons/lu';
+import { LuListTree, LuDiamond, LuCheck, LuArrowLeft } from 'react-icons/lu';
 import { toaster } from '../ui/toaster';
 import * as aiService from '../../services/aiService';
 import useColors from '../../hooks/useColors';
@@ -128,7 +128,7 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
       <DialogContent bg={cardBg} color={textPrimary} maxW="640px">
         <DialogHeader borderBottomColor={border}>
           <Box display="flex" alignItems="center" gap={2.5}>
-            <Box color="#a855f7" display="flex">
+            <Box color="#cda440" display="flex">
               <LuListTree size={18} />
             </Box>
             <Heading size="lg" color={textPrimary}>
@@ -157,7 +157,7 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
                 borderColor={border}
                 fontSize="sm"
                 disabled={drafting}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
                 _placeholder={{ color: textMuted }}
               />
             </>
@@ -178,7 +178,7 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
                     py={2.5}
                     borderRadius="lg"
                     border="1px solid"
-                    borderColor={it.selected ? '#6366f1' : border}
+                    borderColor={it.selected ? '#7a1f3d' : border}
                     bg={it.selected ? 'transparent' : hoverBg}
                     opacity={it.selected ? 1 : 0.55}
                     cursor="pointer"
@@ -192,8 +192,8 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
                       flexShrink={0}
                       borderRadius="sm"
                       border="2px solid"
-                      borderColor={it.selected ? '#6366f1' : textMuted}
-                      bg={it.selected ? '#6366f1' : 'transparent'}
+                      borderColor={it.selected ? '#7a1f3d' : textMuted}
+                      bg={it.selected ? '#7a1f3d' : 'transparent'}
                       color="white"
                       display="flex"
                       alignItems="center"
@@ -240,12 +240,12 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
               </Button>
               <Button
                 onClick={handleDraft}
-                style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                 color="white"
                 _hover={{ opacity: 0.9 }}
                 disabled={!goal.trim() || drafting}
               >
-                <LuSparkles size={15} />
+                <LuDiamond size={14} strokeWidth={2.5} />
                 {drafting ? 'Drafting…' : 'Draft Plan'}
               </Button>
             </>
@@ -264,7 +264,7 @@ const PlanProjectModal = ({ isOpen, onClose, projectId, onTasksCreated }) => {
               </Button>
               <Button
                 onClick={handleCreate}
-                style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                 color="white"
                 _hover={{ opacity: 0.9 }}
                 disabled={selectedCount === 0 || creating}

@@ -176,7 +176,7 @@ const TaskDetailModal = ({
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             ) : (
               <Heading size="md" pr={8} color={textPrimary}>
@@ -260,7 +260,7 @@ const TaskDetailModal = ({
                   bg={inputBg}
                   color={textPrimary}
                   borderColor={border}
-                  _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                  _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
                 />
               ) : task.link ? (
                 <a
@@ -289,7 +289,7 @@ const TaskDetailModal = ({
                   bg={inputBg}
                   color={textPrimary}
                   borderColor={border}
-                  _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                  _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
                 />
               ) : (
                 <Box display="flex" alignItems="center" gap={3} flexWrap="wrap">
@@ -314,7 +314,7 @@ const TaskDetailModal = ({
                       color={textSecondary}
                       cursor="pointer"
                       transition="all 0.15s"
-                      _hover={{ borderColor: '#818cf8', color: textPrimary }}
+                      _hover={{ borderColor: '#cd6785', color: textPrimary }}
                     >
                       <LuCalendarPlus size={13} />
                       Add to calendar
@@ -367,7 +367,7 @@ const TaskDetailModal = ({
                           w="24px" h="24px" borderRadius="full" overflow="hidden"
                           display="flex" alignItems="center" justifyContent="center"
                           fontSize="10px" fontWeight="bold" color="white"
-                          style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                          style={avatarSrc ? {} : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                         >
                           {avatarSrc
                             ? <Box as="img" src={avatarSrc} alt={u.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
@@ -436,7 +436,7 @@ const TaskDetailModal = ({
                       Cancel
                     </Button>
                     <Button
-                      style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                      style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                       color="white"
                       _hover={{ opacity: 0.9 }}
                       onClick={handleSave}
@@ -457,7 +457,7 @@ const TaskDetailModal = ({
                       Close
                     </Button>
                     <Button
-                      style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                      style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
                       color="white"
                       _hover={{ opacity: 0.9 }}
                       onClick={() => setIsEditing(true)}

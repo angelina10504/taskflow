@@ -44,7 +44,7 @@ const MemberAvatar = ({ name, avatar, size = 'md' }) => {
       borderRadius="full" overflow="hidden"
       display="flex" alignItems="center" justifyContent="center"
       fontWeight="bold" fontSize={sizes[size].fontSize} color="white" flexShrink={0}
-      style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+      style={avatarSrc ? {} : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
     >
       {avatarSrc
         ? <Box as="img" src={avatarSrc} alt={name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
@@ -160,7 +160,7 @@ const WorkspaceDetail = () => {
   const canManageMembers = isOwner || currentUserRole === 'admin';
 
   if (isLoading) {
-    return <Center h="100vh"><Spinner size="xl" color="blue.500" /></Center>;
+    return <Center h="100vh"><Spinner size="xl" color="brand.600" /></Center>;
   }
   if (!workspace) return null;
 
@@ -197,7 +197,7 @@ const WorkspaceDetail = () => {
           </Box>
         </Box>
         {!isOwner && (
-          <Button colorScheme="red" variant="outline" onClick={() => setIsLeaveConfirmOpen(true)}>
+          <Button colorPalette="red" variant="outline" onClick={() => setIsLeaveConfirmOpen(true)}>
             Leave Workspace
           </Button>
         )}
@@ -208,7 +208,7 @@ const WorkspaceDetail = () => {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
           <Heading size="lg" color={textPrimary}>Team Members</Heading>
           {canManageMembers && (
-            <Button colorScheme="blue" onClick={() => setIsInviteModalOpen(true)}>+ Invite Member</Button>
+            <Button colorPalette="brand" onClick={() => setIsInviteModalOpen(true)}>+ Invite Member</Button>
           )}
         </Box>
 
@@ -231,7 +231,7 @@ const WorkspaceDetail = () => {
                   </Box>
                 </Box>
                 {canManageMembers && member.role !== 'owner' && member.user._id !== user?.id && (
-                  <Button size="sm" colorScheme="red" variant="ghost" flexShrink={0}
+                  <Button size="sm" colorPalette="red" variant="ghost" flexShrink={0}
                     onClick={() => setMemberToRemove(member.user._id)}
                   >
                     Remove
@@ -247,17 +247,17 @@ const WorkspaceDetail = () => {
       <Box bg={panelBg} p={6} borderRadius="lg" boxShadow="md" border="1px solid" borderColor={border}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
           <Heading size="lg" color={textPrimary}>Projects</Heading>
-          <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>+ New Project</Button>
+          <Button colorPalette="brand" onClick={() => setIsCreateProjectModalOpen(true)}>+ New Project</Button>
         </Box>
 
         {projectsLoading ? (
-          <Center py={10}><Spinner size="lg" color="blue.500" /></Center>
+          <Center py={10}><Spinner size="lg" color="brand.600" /></Center>
         ) : projects.length === 0 ? (
           <Box textAlign="center" py={10}>
             <Text fontSize="5xl" mb={3}>📊</Text>
             <Heading size="md" mb={2} color={textPrimary}>No projects yet</Heading>
             <Text color={textSecondary} mb={4}>Create your first project to get started</Text>
-            <Button colorScheme="blue" onClick={() => setIsCreateProjectModalOpen(true)}>Create Project</Button>
+            <Button colorPalette="brand" onClick={() => setIsCreateProjectModalOpen(true)}>Create Project</Button>
           </Box>
         ) : (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
@@ -277,9 +277,9 @@ const WorkspaceDetail = () => {
       {/* Modals */}
       <InviteMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onInvite={handleInviteMember} workspaceId={id} />
       <CreateProjectModal isOpen={isCreateProjectModalOpen} onClose={() => setIsCreateProjectModalOpen(false)} onCreate={handleCreateProject} workspaceId={id} />
-      <ConfirmDialog isOpen={isLeaveConfirmOpen} onClose={() => setIsLeaveConfirmOpen(false)} onConfirm={handleLeaveWorkspace} title="Leave Workspace" message="Are you sure you want to leave this workspace? You will lose access to all its projects and tasks." confirmLabel="Leave" colorScheme="red" />
-      <ConfirmDialog isOpen={!!memberToRemove} onClose={() => setMemberToRemove(null)} onConfirm={handleRemoveMember} title="Remove Member" message="Are you sure you want to remove this member from the workspace?" confirmLabel="Remove" colorScheme="red" />
-      <ConfirmDialog isOpen={!!projectToDelete} onClose={() => setProjectToDelete(null)} onConfirm={handleDeleteProject} title="Delete Project" message="Are you sure you want to delete this project? All tasks inside will be permanently lost." confirmLabel="Delete Project" colorScheme="red" />
+      <ConfirmDialog isOpen={isLeaveConfirmOpen} onClose={() => setIsLeaveConfirmOpen(false)} onConfirm={handleLeaveWorkspace} title="Leave Workspace" message="Are you sure you want to leave this workspace? You will lose access to all its projects and tasks." confirmLabel="Leave" colorPalette="red" />
+      <ConfirmDialog isOpen={!!memberToRemove} onClose={() => setMemberToRemove(null)} onConfirm={handleRemoveMember} title="Remove Member" message="Are you sure you want to remove this member from the workspace?" confirmLabel="Remove" colorPalette="red" />
+      <ConfirmDialog isOpen={!!projectToDelete} onClose={() => setProjectToDelete(null)} onConfirm={handleDeleteProject} title="Delete Project" message="Are you sure you want to delete this project? All tasks inside will be permanently lost." confirmLabel="Delete Project" colorPalette="red" />
     </Box>
   );
 };

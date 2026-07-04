@@ -343,10 +343,10 @@ const inviteMember = async (req, res) => {
         text: `${inviterName} invited you to join the workspace "${workspace.name}" on TaskFlow.\n\nAccept the invitation (link expires in 7 days):\n${invitationLink}`,
         html: `
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto">
-  <div style="background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:10px 10px 0 0;padding:14px 20px;color:#ffffff;font-weight:bold;font-size:16px">TaskFlow</div>
+  <div style="background:linear-gradient(90deg,#7a1f3d,#a83a58);border-radius:10px 10px 0 0;padding:14px 20px;color:#ffffff;font-weight:bold;font-size:16px">TaskFlow</div>
   <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:20px;color:#1f2937">
     <p style="margin:0 0 16px"><strong>${inviterName.replace(/</g, '&lt;')}</strong> invited you to join the workspace <strong>${workspace.name.replace(/</g, '&lt;')}</strong>.</p>
-    <a href="${invitationLink}" style="display:inline-block;background:linear-gradient(90deg,#6366f1,#a855f7);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Accept Invitation</a>
+    <a href="${invitationLink}" style="display:inline-block;background:linear-gradient(90deg,#7a1f3d,#a83a58);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Accept Invitation</a>
     <p style="font-size:12px;color:#9ca3af;margin:16px 0 0">This link expires in 7 days. If you weren't expecting this, you can ignore it.</p>
   </div>
 </div>`,

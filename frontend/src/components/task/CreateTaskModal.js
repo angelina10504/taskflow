@@ -171,7 +171,7 @@ const CreateTaskModal = ({
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={errors.title ? 'red.500' : border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
               {errors.title && (
                 <Text color="red.400" fontSize="sm" mt={1}>{errors.title}</Text>
@@ -215,7 +215,7 @@ const CreateTaskModal = ({
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
 
@@ -231,7 +231,7 @@ const CreateTaskModal = ({
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
 
@@ -272,7 +272,7 @@ const CreateTaskModal = ({
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
 
@@ -312,7 +312,7 @@ const CreateTaskModal = ({
           <Button
             type="submit"
             form="create-task-form"
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
             disabled={isLoading}

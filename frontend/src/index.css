@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap');
 
 * {
   margin: 0;
@@ -16,7 +16,56 @@ body {
 
 /* Brand-tinted text selection */
 ::selection {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgba(122, 31, 61, 0.22);
+}
+
+/* ── AI identity: the gold thread ──────────────────────────────────────────
+   Every AI surface carries a hairline gold seam. While the model is working
+   the seam carries a traveling glint; under prefers-reduced-motion it holds
+   a steady gold instead. Defined once here, used via .ai-thread[data-thinking].
+   ───────────────────────────────────────────────────────────────────────── */
+.ai-thread {
+  position: relative;
+}
+.ai-thread::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(
+    90deg,
+    rgba(184, 137, 43, 0.15),
+    rgba(184, 137, 43, 0.75) 30%,
+    rgba(220, 189, 104, 0.9) 50%,
+    rgba(184, 137, 43, 0.75) 70%,
+    rgba(184, 137, 43, 0.15)
+  );
+  pointer-events: none;
+}
+.ai-thread[data-thinking='true']::before {
+  background: linear-gradient(
+    90deg,
+    rgba(184, 137, 43, 0.25) 0%,
+    rgba(184, 137, 43, 0.25) 35%,
+    #f2dfa4 50%,
+    rgba(184, 137, 43, 0.25) 65%,
+    rgba(184, 137, 43, 0.25) 100%
+  );
+  background-size: 250% 100%;
+  animation: ai-glint 1.4s linear infinite;
+}
+@keyframes ai-glint {
+  from { background-position: 125% 0; }
+  to   { background-position: -125% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-thread[data-thinking='true']::before {
+    animation: none;
+    background: rgba(220, 189, 104, 0.9);
+  }
 }
 
 /* Thin, quiet scrollbars (kanban columns, dialogs) */

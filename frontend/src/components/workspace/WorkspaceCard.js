@@ -37,13 +37,13 @@ const WorkspaceCard = ({ workspace, currentUserId, onDelete, onClick }) => {
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Box display="flex" gap={4} fontSize="sm" color={textSecondary}>
           <Text>👥 {memberCount} {memberCount === 1 ? 'member' : 'members'}</Text>
-          {isOwner && <Text fontWeight="medium" color="blue.400">Owner</Text>}
+          {isOwner && <Text fontWeight="medium" color="brand.500">Owner</Text>}
         </Box>
 
         {isOwner && (
           <Button
             size="sm"
-            colorScheme="red"
+            colorPalette="red"
             variant="ghost"
             onClick={(e) => { e.stopPropagation(); onDelete(workspace._id); }}
           >
