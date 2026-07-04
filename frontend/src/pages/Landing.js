@@ -54,7 +54,7 @@ const Landing = () => {
             alignItems="center"
             justifyContent="center"
             color="white"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(135deg, #7a1f3d, #a83a58)' }}
           >
             <LuKanban size={18} />
           </Box>
@@ -96,7 +96,7 @@ const Landing = () => {
           <Button
             onClick={() => navigate('/register')}
             style={{
-              background: 'linear-gradient(to right, #6366f1, #a855f7)',
+              background: 'linear-gradient(to right, #7a1f3d, #a83a58)',
               color: 'white',
             }}
             _hover={{ opacity: 0.9 }}
@@ -118,7 +118,7 @@ const Landing = () => {
           h="480px"
           pointerEvents="none"
           style={{
-            background: `radial-gradient(ellipse at center, rgba(99,102,241,${dark ? 0.18 : 0.1}) 0%, rgba(168,85,247,${dark ? 0.08 : 0.05}) 45%, transparent 70%)`,
+            background: `radial-gradient(ellipse at center, rgba(122,31,61,${dark ? 0.18 : 0.1}) 0%, rgba(168,58,88,${dark ? 0.08 : 0.05}) 45%, transparent 70%)`,
           }}
         />
         <Box
@@ -134,7 +134,7 @@ const Landing = () => {
           fontWeight="semibold"
           letterSpacing="widest"
           textTransform="uppercase"
-          color="purple.400"
+          color="brand.500"
           mb={4}
         >
           Project Management, Simplified
@@ -145,7 +145,7 @@ const Landing = () => {
           lineHeight="1.12"
           letterSpacing="-0.03em"
           style={{
-            background: 'linear-gradient(to right, #6366f1, #a855f7)',
+            background: 'linear-gradient(to right, #7a1f3d, #a83a58)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -164,7 +164,7 @@ const Landing = () => {
             px={8}
             onClick={() => navigate('/register')}
             style={{
-              background: 'linear-gradient(to right, #6366f1, #a855f7)',
+              background: 'linear-gradient(to right, #7a1f3d, #a83a58)',
               color: 'white',
             }}
             _hover={{ opacity: 0.9 }}
@@ -175,9 +175,9 @@ const Landing = () => {
             size="lg"
             px={8}
             variant="outline"
-            borderColor={dark ? '#6366f1' : 'purple.500'}
-            color={dark ? 'purple.300' : 'purple.600'}
-            _hover={{ bg: dark ? '#1e1a3d' : 'purple.50' }}
+            borderColor={dark ? '#7a1f3d' : 'brand.600'}
+            color={dark ? 'brand.300' : 'brand.700'}
+            _hover={{ bg: dark ? '#1e1a3d' : 'brand.50' }}
             onClick={() => navigate('/login')}
           >
             Sign In
@@ -199,7 +199,7 @@ const Landing = () => {
               borderColor={border}
               textAlign="center"
               transition="border-color 0.2s, background 0.2s"
-              _hover={{ borderColor: '#818cf8' }}
+              _hover={{ borderColor: '#cd6785' }}
             >
               <Box
                 w="44px"
@@ -210,8 +210,8 @@ const Landing = () => {
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                color={dark ? '#a5b4fc' : '#4f46e5'}
-                bg={dark ? 'rgba(99,102,241,0.14)' : '#eef2ff'}
+                color={dark ? '#e19cb0' : '#932a4a'}
+                bg={dark ? 'rgba(122,31,61,0.14)' : '#fbf2f4'}
               >
                 <f.icon size={22} />
               </Box>

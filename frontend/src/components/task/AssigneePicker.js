@@ -71,12 +71,12 @@ const AssigneePicker = ({ members = [], value = [], onChange, currentUserId, cur
             py={1}
             borderRadius="full"
             border="1px solid"
-            borderColor={selected ? '#6366f1' : border}
-            bg={selected ? 'rgba(99,102,241,0.12)' : hoverBg}
+            borderColor={selected ? '#7a1f3d' : border}
+            bg={selected ? 'rgba(122,31,61,0.12)' : hoverBg}
             opacity={allowed ? 1 : 0.45}
             cursor={allowed ? 'pointer' : 'not-allowed'}
             transition="all 0.15s"
-            _hover={allowed ? { borderColor: '#818cf8' } : {}}
+            _hover={allowed ? { borderColor: '#cd6785' } : {}}
           >
             <Box
               w="22px"
@@ -90,7 +90,7 @@ const AssigneePicker = ({ members = [], value = [], onChange, currentUserId, cur
               fontSize="9px"
               fontWeight="bold"
               color="white"
-              style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+              style={avatarSrc ? {} : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             >
               {avatarSrc ? (
                 <Box as="img" src={avatarSrc} alt={u.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />

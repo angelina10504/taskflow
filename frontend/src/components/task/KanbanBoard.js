@@ -61,7 +61,7 @@ const UserAvatar = ({ user, index }) => {
         overflow="hidden"
         display="flex" alignItems="center" justifyContent="center"
         fontSize="9px" fontWeight="bold" color="white" flexShrink={0}
-        style={avatarSrc ? {} : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+        style={avatarSrc ? {} : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
       >
         {avatarSrc ? (
           <Box as="img" src={avatarSrc} alt={user.name} w="100%" h="100%" style={{ objectFit: 'cover' }} />
@@ -315,9 +315,9 @@ const KanbanBoard = ({
         <Button
           flexShrink={0}
           size="sm"
-          bg="#6366f1"
+          bg="#7a1f3d"
           color="white"
-          _hover={{ bg: '#4f46e5' }}
+          _hover={{ bg: '#932a4a' }}
           _active={{ transform: 'scale(0.98)' }}
           onClick={() => setIsCreateModalOpen(true)}
         >

@@ -20,7 +20,7 @@ const PRIORITY = {
   urgent: { color: '#ef4444', bg: '#fef2f2', darkBg: '#3b1212', label: 'Urgent' },
   high:   { color: '#f97316', bg: '#fff7ed', darkBg: '#3b1f0a', label: 'High' },
   medium: { color: '#eab308', bg: '#fefce8', darkBg: '#332d00', label: 'Medium' },
-  low:    { color: '#6366f1', bg: '#eef2ff', darkBg: '#1e1d3b', label: 'Low' },
+  low:    { color: '#7a1f3d', bg: '#fbf2f4', darkBg: '#1e1d3b', label: 'Low' },
 };
 
 const STATUS = {
@@ -153,11 +153,11 @@ const Dashboard = () => {
 
       {/* Stats */}
       <SimpleGrid columns={{ base: 1, md: 3 }} gap={5} mb={10}>
-        <Box bg={panelBg} p={5} borderRadius="lg" boxShadow="sm" borderTop="4px solid #6366f1">
+        <Box bg={panelBg} p={5} borderRadius="lg" boxShadow="sm" borderTop="4px solid #7a1f3d">
           <Text fontSize="sm" color={textSecondary} mb={1}>Total Workspaces</Text>
           <Heading size="2xl" color={textPrimary}>{wsLoading ? '—' : workspaces.length}</Heading>
         </Box>
-        <Box bg={panelBg} p={5} borderRadius="lg" boxShadow="sm" borderTop="4px solid #a855f7">
+        <Box bg={panelBg} p={5} borderRadius="lg" boxShadow="sm" borderTop="4px solid #a83a58">
           <Text fontSize="sm" color={textSecondary} mb={1}>My Open Tasks</Text>
           <Heading size="2xl" color={textPrimary}>{tasksLoading ? '—' : myTasks.length}</Heading>
         </Box>
@@ -172,7 +172,7 @@ const Dashboard = () => {
         <Box display="flex" alignItems="center" gap={3} mb={4}>
           <Heading size="lg" color={textPrimary}>My Tasks</Heading>
           {!tasksLoading && myTasks.length > 0 && (
-            <Box bg={dark ? '#2d2060' : '#ede9fe'} color={dark ? '#c4b5fd' : '#6d28d9'} px={2} py="1px" borderRadius="full" fontSize="sm" fontWeight="semibold">
+            <Box bg={dark ? '#3a1526' : '#ede9fe'} color={dark ? '#c4b5fd' : '#6d28d9'} px={2} py="1px" borderRadius="full" fontSize="sm" fontWeight="semibold">
               {myTasks.length}
             </Box>
           )}
@@ -182,7 +182,7 @@ const Dashboard = () => {
         <Box display="flex" gap={2} mb={5} flexWrap="wrap">
           {['all', ...PRIORITY_ORDER].map((p) => {
             const active = priorityFilter === p;
-            const activeBg = p === 'all' ? '#6366f1' : PRIORITY[p]?.color;
+            const activeBg = p === 'all' ? '#7a1f3d' : PRIORITY[p]?.color;
             return (
               <Box
                 key={p}
@@ -206,7 +206,7 @@ const Dashboard = () => {
         </Box>
 
         {tasksLoading ? (
-          <Center py={10}><Spinner color="purple.500" /></Center>
+          <Center py={10}><Spinner color="brand.600" /></Center>
         ) : myTasks.length === 0 ? (
           <Box bg={panelBg} borderRadius="xl" p={10} textAlign="center" boxShadow="sm">
             <Text fontSize="3xl" mb={2}>🎉</Text>
@@ -258,14 +258,14 @@ const Dashboard = () => {
         <Box display="flex" alignItems="center" gap={3} mb={4}>
           <Heading size="lg" color={textPrimary}>Active Projects</Heading>
           {!projectsLoading && myProjects.length > 0 && (
-            <Box bg={dark ? '#1e1d3b' : '#eef2ff'} color={dark ? '#a5b4fc' : '#4338ca'} px={2} py="1px" borderRadius="full" fontSize="sm" fontWeight="semibold">
+            <Box bg={dark ? '#1e1d3b' : '#fbf2f4'} color={dark ? '#e19cb0' : '#7a1f3d'} px={2} py="1px" borderRadius="full" fontSize="sm" fontWeight="semibold">
               {myProjects.length}
             </Box>
           )}
         </Box>
 
         {projectsLoading ? (
-          <Center py={8}><Spinner color="purple.500" /></Center>
+          <Center py={8}><Spinner color="brand.600" /></Center>
         ) : myProjects.length === 0 ? (
           <Box bg={panelBg} borderRadius="xl" p={8} textAlign="center" boxShadow="sm">
             <Text fontSize="3xl" mb={2}>📂</Text>
@@ -285,7 +285,7 @@ const Dashboard = () => {
                   _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
                   onClick={() => navigate(`/projects/${project._id}`)}
                 >
-                  <Box h="4px" style={{ background: project.color || '#6366f1' }} />
+                  <Box h="4px" style={{ background: project.color || '#7a1f3d' }} />
                   <Box p={4}>
                     <Box display="flex" alignItems="center" gap={2} mb={1}>
                       <Text fontSize="lg">{project.icon}</Text>
@@ -314,19 +314,19 @@ const Dashboard = () => {
       {/* Recent Workspaces */}
       <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
         <Heading size="lg" color={textPrimary}>Recent Workspaces</Heading>
-        <Button size="sm" variant="ghost" colorScheme="purple" onClick={() => navigate('/workspaces')}>
+        <Button size="sm" variant="ghost" colorPalette="brand" onClick={() => navigate('/workspaces')}>
           View all →
         </Button>
       </Box>
 
       {wsLoading ? (
-        <Center py={10}><Spinner size="lg" color="purple.500" /></Center>
+        <Center py={10}><Spinner size="lg" color="brand.600" /></Center>
       ) : workspaces.length === 0 ? (
         <Box bg={panelBg} borderRadius="lg" boxShadow="sm" p={10} textAlign="center">
           <Text fontSize="4xl" mb={3}>📁</Text>
           <Heading size="md" mb={2} color={textPrimary}>No workspaces yet</Heading>
           <Text color={textSecondary} mb={4}>Create your first workspace to get started</Text>
-          <Button colorScheme="blue" onClick={() => navigate('/workspaces')}>Go to Workspaces</Button>
+          <Button colorPalette="brand" onClick={() => navigate('/workspaces')}>Go to Workspaces</Button>
         </Box>
       ) : (
         <SimpleGrid columns={{ base: 1, md: 3 }} gap={5}>
@@ -336,7 +336,7 @@ const Dashboard = () => {
               bg={panelBg} p={5} borderRadius="lg" boxShadow="sm"
               border="1px solid" borderColor={borderLight}
               cursor="pointer" transition="all 0.2s"
-              _hover={{ boxShadow: 'md', borderColor: 'purple.400' }}
+              _hover={{ boxShadow: 'md', borderColor: 'brand.500' }}
               onClick={() => navigate(`/workspaces/${workspace._id}`)}
             >
               <Heading size="md" mb={1} noOfLines={1} color={textPrimary}>{workspace.name}</Heading>

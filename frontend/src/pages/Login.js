@@ -100,7 +100,7 @@ const Login = () => {
           mb={2}
           textAlign="center"
           style={{
-            background: 'linear-gradient(to right, #6366f1, #a855f7)',
+            background: 'linear-gradient(to right, #7a1f3d, #a83a58)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -138,7 +138,7 @@ const Login = () => {
               bg={inputBg}
               color={textPrimary}
               borderColor={errors.email ? 'red.500' : border}
-              _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+              _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
             />
             {errors.email && (
               <Text color="red.400" fontSize="sm" mt={1}>
@@ -161,7 +161,7 @@ const Login = () => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={errors.password ? 'red.500' : border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
                 pr="12"
               />
               <Box
@@ -189,7 +189,7 @@ const Login = () => {
             mb={6}
           >
             <Text
-              color="purple.400"
+              color="brand.500"
               fontSize="sm"
               fontWeight="medium"
               cursor="pointer"
@@ -203,7 +203,7 @@ const Login = () => {
             w="full"
             size="lg"
             disabled={isLoading}
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
           >
@@ -228,7 +228,7 @@ const Login = () => {
           Don't have an account?{' '}
           <Text
             as="span"
-            color="purple.400"
+            color="brand.500"
             fontWeight="medium"
             cursor="pointer"
             onClick={() => navigate('/register')}

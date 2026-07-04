@@ -72,7 +72,7 @@ const Profile = () => {
     color: textPrimary,
     size: 'sm',
     borderRadius: 'md',
-    _focus: { borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' },
+    _focus: { borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' },
   };
 
   const handleChange = (e) => {
@@ -182,7 +182,7 @@ const Profile = () => {
                 fontWeight="bold"
                 fontSize="xl"
                 color="white"
-                style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
               >
                 {initials}
               </Box>
@@ -260,7 +260,7 @@ const Profile = () => {
             bg={inputBg}
             color={textPrimary}
             borderColor={border}
-            _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+            _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
           />
         </Field>
 
@@ -270,7 +270,7 @@ const Profile = () => {
             onClick={handleSave}
             loading={isSaving}
             size="sm"
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
             px={6}

@@ -74,7 +74,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, onCreate }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={errors.name ? 'red.500' : border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
               {errors.name && (
                 <Text color="red.400" fontSize="sm" mt={1}>{errors.name}</Text>
@@ -93,7 +93,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, onCreate }) => {
                 bg={inputBg}
                 color={textPrimary}
                 borderColor={border}
-                _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #a855f7' }}
+                _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px #a83a58' }}
               />
             </Box>
           </form>
@@ -113,7 +113,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, onCreate }) => {
           <Button
             type="submit"
             form="create-workspace-form"
-            style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+            style={{ background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }}
             color="white"
             _hover={{ opacity: 0.9 }}
             disabled={isLoading}

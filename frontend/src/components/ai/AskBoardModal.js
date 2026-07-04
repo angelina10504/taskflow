@@ -9,7 +9,7 @@ import {
   DialogBackdrop,
   DialogCloseTrigger,
 } from '../ui/dialog';
-import { LuSearch, LuSparkles, LuCornerDownLeft } from 'react-icons/lu';
+import { LuSearch, LuDiamond, LuCornerDownLeft } from 'react-icons/lu';
 import { toaster } from '../ui/toaster';
 import * as aiService from '../../services/aiService';
 import useColors from '../../hooks/useColors';
@@ -87,8 +87,8 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
             borderRadius="sm"
             fontSize="xs"
             fontWeight="700"
-            bg="rgba(99,102,241,0.16)"
-            color="#818cf8"
+            bg="rgba(122,31,61,0.16)"
+            color="#cd6785"
           >
             {m[1]}
           </Box>
@@ -103,7 +103,7 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
       <DialogContent bg={cardBg} color={textPrimary} maxW="640px">
         <DialogHeader borderBottomColor={border}>
           <Box display="flex" alignItems="center" gap={2.5}>
-            <Box color="#22d3ee" display="flex">
+            <Box color="#cda440" display="flex">
               <LuSearch size={18} />
             </Box>
             <Heading size="lg" color={textPrimary}>
@@ -131,7 +131,7 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
               borderColor={border}
               fontSize="sm"
               disabled={loading}
-              _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px #22d3ee' }}
+              _focus={{ borderColor: 'rgba(184,137,43,0.5)', boxShadow: '0 0 0 3px rgba(184,137,43,0.12)' }}
               _placeholder={{ color: textMuted }}
             />
             <Button
@@ -139,7 +139,7 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
               disabled={!question.trim() || loading}
               flexShrink={0}
               color="white"
-              style={{ background: 'linear-gradient(to right, #06b6d4, #6366f1)' }}
+              style={{ background: 'linear-gradient(to right, #06b6d4, #7a1f3d)' }}
               _hover={{ opacity: 0.9 }}
             >
               {loading ? 'Thinking…' : (
@@ -183,17 +183,17 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
                   mb={3}
                   borderRadius="lg"
                   border="1px solid"
-                  borderColor="rgba(99,102,241,0.35)"
-                  bg="rgba(99,102,241,0.07)"
+                  borderColor="rgba(184,137,43,0.45)"
+                  bg="rgba(184,137,43,0.07)"
                 >
                   <Box display="flex" alignItems="center" gap={1.5} mb={1.5}>
-                    <LuSparkles size={13} color="#818cf8" />
-                    <Text fontSize="xs" fontWeight="700" color="#818cf8" letterSpacing="0.05em">
+                    <LuDiamond size={12} color="#cda440" strokeWidth={2.5} />
+                    <Text fontSize="xs" fontWeight="700" color="#b8892b" letterSpacing="0.08em">
                       ANSWER — grounded in {result.sources.length} task
                       {result.sources.length === 1 ? '' : 's'}
                     </Text>
                   </Box>
-                  <Text fontSize="sm" color={textPrimary} lineHeight="1.7">
+                  <Text fontFamily="ai" fontSize="sm" color={textPrimary} lineHeight="1.7">
                     {renderAnswer(result.answer)}
                   </Text>
                 </Box>
@@ -229,8 +229,8 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
                           py={2}
                           borderRadius="md"
                           border="1px solid"
-                          borderColor={cited ? '#6366f1' : border}
-                          bg={cited ? 'rgba(99,102,241,0.06)' : 'transparent'}
+                          borderColor={cited ? '#7a1f3d' : border}
+                          bg={cited ? 'rgba(122,31,61,0.06)' : 'transparent'}
                         >
                           <Box
                             mt="1px"
@@ -243,7 +243,7 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
-                            bg={cited ? '#6366f1' : hoverBg}
+                            bg={cited ? '#7a1f3d' : hoverBg}
                             color={cited ? 'white' : textMuted}
                           >
                             {n}
@@ -262,7 +262,7 @@ const AskBoardModal = ({ isOpen, onClose, projectId }) => {
                               {s.assignedTo?.some((u) => u.name) && (
                                 <Text>→ {s.assignedTo.map((u) => u.name).filter(Boolean).join(', ')}</Text>
                               )}
-                              <Text color="#22d3ee">{Math.round(s.score * 100)}% match</Text>
+                              <Text color="#cda440">{Math.round(s.score * 100)}% match</Text>
                             </Box>
                           </Box>
                         </Box>

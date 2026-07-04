@@ -95,7 +95,7 @@ const Layout = ({ children }) => {
               justifyContent="center"
               color="white"
               flexShrink={0}
-              style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}
+              style={{ background: 'linear-gradient(135deg, #7a1f3d, #a83a58)' }}
             >
               <LuKanban size={16} />
             </Box>
@@ -138,15 +138,15 @@ const Layout = ({ children }) => {
               py={2}
               borderRadius="md"
               cursor="pointer"
-              bg={isActive(item.path) ? (dark ? '#2d2060' : 'purple.50') : 'transparent'}
-              color={isActive(item.path) ? 'purple.400' : textSecondary}
+              bg={isActive(item.path) ? (dark ? '#3a1526' : 'brand.50') : 'transparent'}
+              color={isActive(item.path) ? 'brand.500' : textSecondary}
               fontWeight={isActive(item.path) ? 'semibold' : 'normal'}
               transition="all 0.15s"
               _hover={{
                 bg: isActive(item.path)
-                  ? dark ? '#2d2060' : 'purple.50'
+                  ? dark ? '#3a1526' : 'brand.50'
                   : hoverBg,
-                color: isActive(item.path) ? 'purple.400' : textPrimary,
+                color: isActive(item.path) ? 'brand.500' : textPrimary,
               }}
               onClick={() => navigate(item.path)}
             >
@@ -186,7 +186,7 @@ const Layout = ({ children }) => {
               style={
                 user?.avatar && !user.avatar.includes('ui-avatars.com')
                   ? {}
-                  : { background: 'linear-gradient(to right, #6366f1, #a855f7)' }
+                  : { background: 'linear-gradient(to right, #7a1f3d, #a83a58)' }
               }
             >
               {user?.avatar && !user.avatar.includes('ui-avatars.com') ? (

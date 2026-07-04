@@ -59,15 +59,15 @@ const notifyAssignment = async ({ task, project, assignerId, assignerName, added
 
     const html = `
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto">
-  <div style="background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:10px 10px 0 0;padding:14px 20px;color:#ffffff;font-weight:bold;font-size:16px">TaskFlow</div>
+  <div style="background:linear-gradient(90deg,#7a1f3d,#a83a58);border-radius:10px 10px 0 0;padding:14px 20px;color:#ffffff;font-weight:bold;font-size:16px">TaskFlow</div>
   <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:20px;color:#1f2937">
     <p style="margin:0 0 14px"><strong>${escapeHtml(assignerName)}</strong> assigned you a task in <strong>${escapeHtml(projectName)}</strong>:</p>
-    <div style="border:1px solid #e5e7eb;border-left:4px solid #6366f1;border-radius:8px;padding:12px 16px;margin:0 0 18px">
+    <div style="border:1px solid #e5e7eb;border-left:4px solid #7a1f3d;border-radius:8px;padding:12px 16px;margin:0 0 18px">
       <div style="font-weight:600;margin-bottom:4px">${escapeHtml(task.title)}</div>
       <div style="font-size:13px;color:#6b7280">${escapeHtml(metaBits)}</div>
     </div>
-    <a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#6366f1,#a855f7);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Open in TaskFlow</a>
-    ${gcalUrl ? `<a href="${gcalUrl}" style="display:inline-block;margin-left:10px;border:1px solid #6366f1;color:#6366f1;text-decoration:none;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600">📅 Add to Google Calendar</a>` : ''}
+    <a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#7a1f3d,#a83a58);color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Open in TaskFlow</a>
+    ${gcalUrl ? `<a href="${gcalUrl}" style="display:inline-block;margin-left:10px;border:1px solid #7a1f3d;color:#7a1f3d;text-decoration:none;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600">📅 Add to Google Calendar</a>` : ''}
     ${task.dueDate ? '<p style="font-size:12px;color:#9ca3af;margin:16px 0 0">Prefer Outlook or Apple Calendar? The attached invite (.ics) works there too.</p>' : ''}
   </div>
 </div>`;
