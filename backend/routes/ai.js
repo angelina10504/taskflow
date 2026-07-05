@@ -11,12 +11,20 @@ const {
   semanticSearch,
   findSimilarTasks,
   askBoard,
+  globalSearch,
+  getTodayPlan,
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
 router.use(protect);
+
+// Cross-board semantic search (scoped to the caller's workspaces)
+router.get('/search', globalSearch);
+
+// Today's plan — deterministic features, LLM selection, cached per day
+router.get('/today', getTodayPlan);
 
 router.get('/projects/:projectId/velocity', getVelocityInsights);
 router.post('/projects/:projectId/command', commandBoard);

@@ -109,3 +109,23 @@ export const askBoard = async (projectId, question) => {
     throw error.response?.data || { message: 'Ask failed' };
   }
 };
+
+// Semantic search across every board the user belongs to (global ⌘⇧K palette)
+export const globalSearch = async (q, limit = 12) => {
+  try {
+    const response = await api.get('/api/ai/search', { params: { q, limit } });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Search failed' };
+  }
+};
+
+// Today's plan — cached per day server-side; refresh forces a replan
+export const getTodayPlan = async (refresh = false) => {
+  try {
+    const response = await api.get('/api/ai/today', { params: refresh ? { refresh: 1 } : {} });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Could not load today’s plan' };
+  }
+};

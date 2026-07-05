@@ -22,9 +22,9 @@ if (process.env.EVAL_API_KEY) process.env.AI_API_KEY = process.env.EVAL_API_KEY;
 const fs = require('fs');
 const { getClient, MODEL } = require('../utils/aiClient');
 const { __evalInternals } = require('../controllers/aiController');
-const { QUICK_ADD_SYSTEM, EXTRACT_SYSTEM, DECOMPOSE_SYSTEM, buildCalendar } = __evalInternals;
+const { QUICK_ADD_SYSTEM, EXTRACT_SYSTEM, DECOMPOSE_SYSTEM, TODAY_SYSTEM, buildCalendar } = __evalInternals;
 const { PINNED_NOW, CURRENT_USER, MEMBERS } = require('./roster');
-const { scoreQuickAdd, scoreExtract, scoreDecompose } = require('./score');
+const { scoreQuickAdd, scoreExtract, scoreDecompose, scoreToday } = require('./score');
 
 // Approximate Groq pricing, USD per 1M tokens (input, output).
 const PRICES = {
@@ -58,6 +58,13 @@ const SUITES = {
     maxTokens: 1800,
     payload: (c) => ({ goal: c.goal, project: { name: 'TaskFlow', description: 'Kanban project management app' } }),
     score: (c, json) => scoreDecompose(c, Array.isArray(json.items) ? json.items : []),
+  },
+  today: {
+    cases: require('./datasets/today.cases'),
+    system: TODAY_SYSTEM,
+    maxTokens: 900,
+    payload: (c) => ({ today: new Date(PINNED_NOW).toDateString(), capacity: c.capacity, candidates: c.candidates }),
+    score: (c, json) => scoreToday(c, json),
   },
 };
 
