@@ -42,6 +42,16 @@ const Layout = ({ children }) => {
       .catch(() => {});
   }, [location.pathname]);
 
+  // Route-aware tab title — small thing, but "Today · TaskFlow" beats a
+  // static tab in a wall of browser tabs.
+  useEffect(() => {
+    const NAMES = { '/today': 'Today', '/dashboard': 'Dashboard', '/workspaces': 'Workspaces', '/profile': 'Profile' };
+    const label =
+      NAMES[location.pathname] ||
+      (location.pathname.startsWith('/projects/') ? 'Board' : location.pathname.startsWith('/workspaces/') ? 'Workspace' : null);
+    document.title = label ? `${label} · TaskFlow` : 'TaskFlow';
+  }, [location.pathname]);
+
   // ⌘/Ctrl+Shift+K opens global semantic search from anywhere.
   useEffect(() => {
     const onKey = (e) => {

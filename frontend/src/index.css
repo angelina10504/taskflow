@@ -19,6 +19,17 @@ body {
   background: rgba(122, 31, 61, 0.22);
 }
 
+/* Keyboard focus: a visible wine ring on anything focusable that doesn't
+   bring its own (Chakra recipes override this with their focus styles). */
+:focus-visible {
+  outline: 2px solid rgba(122, 31, 61, 0.55);
+  outline-offset: 2px;
+}
+html[data-theme='dark'] :focus-visible,
+.dark :focus-visible {
+  outline-color: rgba(205, 103, 133, 0.65);
+}
+
 /* ── AI identity: the gold thread ──────────────────────────────────────────
    Every AI surface carries a hairline gold seam. While the model is working
    the seam carries a traveling glint; under prefers-reduced-motion it holds
