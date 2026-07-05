@@ -99,15 +99,19 @@ const memoryQuery = async ({ scope, queryVector, k }) => {
     .slice(0, k);
 };
 
-// Top-k semantically similar tasks within a project (or a whole workspace).
+// Top-k semantically similar tasks within a project, a workspace, or a set
+// of workspaces (global search across every board a user belongs to).
 // Returns { results, method } where every result carries a cosine `score`.
-const searchTasks = async ({ projectId, workspaceId, query, k = 8 }) => {
+const searchTasks = async ({ projectId, workspaceId, workspaceIds, query, k = 8 }) => {
   const queryVector = await embedText(query);
   if (!queryVector) return { results: [], method: 'none' };
 
+  const oid = (id) => new mongoose.Types.ObjectId(String(id));
   const scope = projectId
-    ? { project: new mongoose.Types.ObjectId(String(projectId)) }
-    : { workspace: new mongoose.Types.ObjectId(String(workspaceId)) };
+    ? { project: oid(projectId) }
+    : Array.isArray(workspaceIds)
+    ? { workspace: { $in: workspaceIds.map(oid) } } // $in is index-filterable in $vectorSearch
+    : { workspace: oid(workspaceId) };
 
   if (Date.now() > vectorSearchBrokenUntil) {
     try {

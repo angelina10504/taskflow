@@ -145,4 +145,45 @@ const scoreDecompose = (c, rawItems) => {
   return { pass: fails.length === 0, fails };
 };
 
-module.exports = { scoreQuickAdd, scoreExtract, scoreDecompose };
+// ── today plan ───────────────────────────────────────────────────────────────
+// Mirrors the production validation in getTodayPlan: ids must come from the
+// candidate set, no dupes, capacity respected — plus case-specific ranking
+// expectations (must_first / must_include / must_exclude / order_pairs).
+const scoreToday = (c, json) => {
+  const fails = [];
+  const picks = Array.isArray(json.picks) ? json.picks : [];
+  if (!Array.isArray(json.picks)) fails.push('picks missing or not an array');
+
+  const validIds = new Set(c.candidates.map((x) => x.id));
+  const ids = picks.map((p) => String(p.id));
+
+  if (ids.some((id) => !validIds.has(id))) fails.push('a pick id is not in the candidate set (hallucinated task)');
+  if (new Set(ids).size !== ids.length) fails.push('duplicate picks');
+  if (picks.length === 0) fails.push('empty plan');
+  if (picks.length > c.capacity) fails.push(`over capacity: picked ${picks.length}, capacity ${c.capacity}`);
+  if (picks.some((p) => typeof p.reason !== 'string' || p.reason.trim().length < 5)) fails.push('a pick has no usable reason');
+  if (picks.some((p) => typeof p.reason === 'string' && p.reason.length > 160)) fails.push('a reason exceeds the length limit');
+  if (typeof json.briefing !== 'string' || json.briefing.trim().length < 10) fails.push('briefing missing or too short');
+
+  const e = c.expect || {};
+  for (const id of e.must_include || []) {
+    if (!ids.includes(id)) fails.push(`must include ${id} (${c.candidates.find((x) => x.id === id)?.title?.slice(0, 40)})`);
+  }
+  for (const id of e.must_exclude || []) {
+    if (ids.includes(id)) fails.push(`must exclude ${id} (${c.candidates.find((x) => x.id === id)?.title?.slice(0, 40)})`);
+  }
+  if (e.must_first && ids[0] !== e.must_first) fails.push(`first pick should be ${e.must_first}, got ${ids[0] || 'none'}`);
+  for (const [above, below] of e.order_pairs || []) {
+    const ia = ids.indexOf(above);
+    const ib = ids.indexOf(below);
+    if (ia === -1) fails.push(`must include ${above} for ordering check`);
+    else if (ib !== -1 && ib < ia) fails.push(`${above} should rank above ${below}`);
+  }
+  if (e.reasons_mention_numbers && picks.length && !picks.some((p) => /\d/.test(p.reason || ''))) {
+    fails.push('no reason cites a concrete number (days overdue, deadline distance…)');
+  }
+
+  return { pass: fails.length === 0, fails };
+};
+
+module.exports = { scoreQuickAdd, scoreExtract, scoreDecompose, scoreToday };
