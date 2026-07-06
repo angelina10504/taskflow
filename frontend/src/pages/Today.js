@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Heading, Text, Button, Spinner } from '@chakra-ui/react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
-import { LuRefreshCw, LuClock } from 'react-icons/lu';
+import { LuRefreshCw, LuClock, LuCoffee, LuUtensils, LuCalendarPlus } from 'react-icons/lu';
 import * as aiService from '../services/aiService';
+import * as authService from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import useColors from '../hooks/useColors';
 import { AIHallmark, AIThread, RuleBasedChip, gold } from '../components/ai/primitives';
+import { packSchedule, buildPlanICS, fmtTime } from '../utils/schedule';
 
 // Today: the AI-planned focus page. Features are computed in code (urgency,
 // deadlines, staleness, throughput-based capacity), the model only selects
@@ -27,12 +30,46 @@ const fmtEffort = (min) => (min >= 60 ? `~${Math.round((min / 60) * 10) / 10}h` 
 
 const Today = () => {
   const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const { dark, panelBg, cardBg, border, textPrimary, textSecondary, textMuted } = useColors();
   const g = gold(dark);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hours, setHours] = useState({ start: user?.planning?.start || '09:00', end: user?.planning?.end || '17:00' });
+  const [savingHours, setSavingHours] = useState(false);
+
+  // Deterministic packing — recomputes instantly when hours change.
+  const schedule = useMemo(
+    () => (data?.picks?.length ? packSchedule(data.picks, hours) : null),
+    [data, hours]
+  );
+  const hoursDirty = hours.start !== (user?.planning?.start || '09:00') || hours.end !== (user?.planning?.end || '17:00');
+
+  const saveHours = async () => {
+    if (hours.start >= hours.end) return;
+    setSavingHours(true);
+    try {
+      const res = await authService.updateProfile({ planning: hours });
+      if (res.user) updateUser(res.user);
+    } catch {
+      /* schedule still uses the local hours */
+    } finally {
+      setSavingHours(false);
+    }
+  };
+
+  const downloadICS = () => {
+    if (!schedule) return;
+    const ics = buildPlanICS(schedule.blocks, { dayOffset: schedule.dayOffset });
+    const day = new Date(Date.now() + schedule.dayOffset * 86400000);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = `taskflow-plan-${format(day, 'yyyy-MM-dd')}.ics`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -180,6 +217,87 @@ const Today = () => {
                   </Box>
                 );
               })}
+            </Box>
+          )}
+
+          {/* ── The schedule: code packs the picks into clock time ── */}
+          {schedule && schedule.blocks.length > 0 && (
+            <Box mt={6}>
+              <Box display="flex" alignItems="center" gap={3} mb={2.5} flexWrap="wrap">
+                <Text fontSize="10px" fontWeight="700" letterSpacing="0.12em" textTransform="uppercase" color={textMuted}>
+                  {schedule.dayOffset === 1 ? "Tomorrow's schedule — today's workday is over" : "Today's schedule"}
+                </Text>
+                <Box display="flex" alignItems="center" gap={1.5} ml="auto">
+                  <Box as="input" type="time" value={hours.start} onChange={(e) => setHours((h) => ({ ...h, start: e.target.value }))}
+                    bg="transparent" border="1px solid" borderColor={border} borderRadius="md" px={1.5} py={0.5} fontSize="xs" color={textSecondary} />
+                  <Text fontSize="xs" color={textMuted}>–</Text>
+                  <Box as="input" type="time" value={hours.end} onChange={(e) => setHours((h) => ({ ...h, end: e.target.value }))}
+                    bg="transparent" border="1px solid" borderColor={border} borderRadius="md" px={1.5} py={0.5} fontSize="xs" color={textSecondary} />
+                  {hoursDirty && (
+                    <Button size="xs" variant="outline" borderColor={border} color={textSecondary} onClick={saveHours} disabled={savingHours || hours.start >= hours.end}>
+                      {savingHours ? <Spinner size="xs" /> : 'Save hours'}
+                    </Button>
+                  )}
+                  <Button size="xs" variant="outline" borderColor={g.ring} color={g.text} onClick={downloadICS} _hover={{ bg: g.tint }}>
+                    <LuCalendarPlus size={12} style={{ marginRight: 5 }} />
+                    Add to calendar
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box border="1px solid" borderColor={border} borderRadius="lg" overflow="hidden">
+                {schedule.blocks.map((b, i) => {
+                  const isTask = b.kind === 'task';
+                  return (
+                    <Box
+                      key={i}
+                      display="flex"
+                      alignItems="center"
+                      gap={3}
+                      px={4}
+                      py={isTask ? 2.5 : 1.5}
+                      bg={isTask ? cardBg : 'transparent'}
+                      borderTop={i === 0 ? 'none' : '1px solid'}
+                      borderColor={border}
+                      cursor={isTask ? 'pointer' : 'default'}
+                      _hover={isTask ? { bg: dark ? '#252c3d' : 'gray.50' } : {}}
+                      onClick={() => isTask && b.pick.task?.project?._id && navigate(`/projects/${b.pick.task.project._id}`)}
+                    >
+                      <Text fontSize="xs" fontWeight="600" color={isTask ? textSecondary : textMuted} w="118px" flexShrink={0} fontVariantNumeric="tabular-nums">
+                        {fmtTime(b.start)} – {fmtTime(b.end)}
+                      </Text>
+                      {isTask ? (
+                        <>
+                          <Text fontSize="sm" fontWeight="500" color={textPrimary} flex="1" minW={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                            {b.pick.task?.title}
+                            {b.partial && <Text as="span" color={textMuted}> · first pass</Text>}
+                          </Text>
+                          <Text fontSize="xs" color={textMuted} flexShrink={0} display={{ base: 'none', md: 'block' }}>
+                            {b.pick.task?.project?.icon} {b.pick.task?.project?.name}
+                          </Text>
+                          {b.assumed && (
+                            <Text fontSize="10px" color={g.text} flexShrink={0} title="No estimate on this task — 1h assumed for scheduling">
+                              ~1h assumed
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <Box display="flex" alignItems="center" gap={2} color={textMuted}>
+                          {b.kind === 'lunch' ? <LuUtensils size={12} /> : <LuCoffee size={12} />}
+                          <Text fontSize="xs">{b.kind === 'lunch' ? 'Lunch' : 'Break'}</Text>
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              {schedule.overflow.length > 0 && (
+                <Text fontSize="xs" color={textMuted} mt={2}>
+                  Doesn't fit {schedule.dayOffset === 1 ? 'tomorrow' : 'today'}:{' '}
+                  {schedule.overflow.map((o) => `${o.pick.task?.title}${o.remainder ? ' (remainder)' : ''}`).join(' · ')} — shorten estimates, widen the workday, or let it wait.
+                </Text>
+              )}
             </Box>
           )}
 
