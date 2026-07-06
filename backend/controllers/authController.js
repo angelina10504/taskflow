@@ -84,6 +84,7 @@ const register = async (req, res) => {
         jobTitle: user.jobTitle,
         phone: user.phone,
         timezone: user.timezone,
+        planning: user.planning,
       },
       accessToken,
     });
@@ -150,6 +151,7 @@ const login = async (req, res) => {
         jobTitle: user.jobTitle,
         phone: user.phone,
         timezone: user.timezone,
+        planning: user.planning,
       },
       accessToken,
     });
@@ -279,6 +281,7 @@ const googleAuth = async (req, res) => {
         jobTitle: user.jobTitle,
         phone: user.phone,
         timezone: user.timezone,
+        planning: user.planning,
       },
       accessToken,
     });
@@ -297,13 +300,25 @@ const googleAuth = async (req, res) => {
 // @access  Private
 const updateMe = async (req, res) => {
   try {
-    const { name, bio, jobTitle, phone, timezone } = req.body;
+    const { name, bio, jobTitle, phone, timezone, planning } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, bio, jobTitle, phone, timezone },
-      { new: true, runValidators: true }
-    );
+    const update = { name, bio, jobTitle, phone, timezone };
+    // Planner working hours: validate HH:MM and start < end before saving.
+    if (planning && typeof planning === 'object') {
+      const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+      const { start, end } = planning;
+      if (HHMM.test(start || '') && HHMM.test(end || '') && start < end) {
+        update['planning.start'] = start;
+        update['planning.end'] = end;
+      } else {
+        return res.status(400).json({ success: false, message: 'Working hours must be HH:MM with start before end' });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.id, update, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       success: true,
@@ -316,6 +331,7 @@ const updateMe = async (req, res) => {
         jobTitle: user.jobTitle,
         phone: user.phone,
         timezone: user.timezone,
+        planning: user.planning,
       },
     });
   } catch (error) {
@@ -353,6 +369,7 @@ const uploadAvatar = async (req, res) => {
         jobTitle: user.jobTitle,
         phone: user.phone,
         timezone: user.timezone,
+        planning: user.planning,
       },
     });
   } catch (error) {

@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'UTC',
     },
+    // Working hours for the Today planner's time-blocking (HH:MM, 24h).
+    planning: {
+      start: { type: String, default: '09:00' },
+      end: { type: String, default: '17:00' },
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,
