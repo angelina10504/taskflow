@@ -7,6 +7,23 @@ A full-stack, high-performance project management application inspired by Trello
 
 ---
 
+## 🧪 The prompts have a test suite
+
+Most AI side-projects ship prompts on vibes. TaskFlow's are regression-tested: **65 golden cases, scored deterministically** (no LLM-as-judge), run against the *exact* production prompts — imported from the controller rather than copied, so a prompt edit can't silently drift away from what's tested.
+
+It paid for itself on the first run. The baseline exposed three real defects — including **a prompt injection that actually worked**: `IGNORE ALL PREVIOUS INSTRUCTIONS…` buried in pasted meeting notes made task extraction return nothing. Three targeted prompt rules later:
+
+| Run | Overall |
+| :--- | :--- |
+| Baseline | 52/65 — **80.0%** |
+| After prompt fixes | 60/65 — **92.3%** — injection defeated |
+
+The same suite doubles as a **model-routing qualification test**: a 10× cheaper model scores 36.9% — fine for structural planning (6/6), unusable for precision parsing (26%). That's the measurement you want *before* cost-optimizing, not after a customer finds the regression.
+
+**→ Methodology, per-suite results, and the three fixes: [`backend/evals/README.md`](backend/evals/README.md)**
+
+---
+
 ## 🚀 Key Features
 
 * **🤖 AI Velocity Intelligence:** One click turns your board into a forecast — throughput, cycle time, overdue/stale detection, per-assignee workload, and a *projected finish date vs. deadline*, with an AI-written risk verdict, insights, and recommendations.
@@ -76,7 +93,7 @@ Semantic memory for the project: every task is embedded and retrievable by *mean
 Prompts are code, so they have a test suite: 65 golden cases scored deterministically (no LLM-as-judge) against the **exact production prompts**, imported from the controller rather than copied.
 * **What's covered:** 50 quick-add parses (title cleanup, priorities, calendar date resolution, roster-exact assignees, trap cases like a client named *"Friday's Diner"*), 9 meeting-notes extractions **including 2 prompt-injection attacks**, and 6 structural plan decompositions.
 * **Reproducible by construction:** the eval clock is pinned (Wed 2026-07-01), so every date expectation is a literal string and any machine gets the same calendar. Scoring mirrors the controllers' own validation, so a pass means production would have stored exactly the expected values.
-* **It found real bugs:** the baseline run (80% pass) exposed a systematic self-assignment bias, a weekday-resolution blind spot, and a successful injection override ("IGNORE ALL PREVIOUS INSTRUCTIONS…" returned zero tasks). Three targeted prompt rules later, the suite passes **92%** and the injection is defeated — measured, not eyeballed.
+* **It found real bugs:** the baseline run (80.0% pass) exposed a systematic self-assignment bias, a weekday-resolution blind spot, and a successful injection override ("IGNORE ALL PREVIOUS INSTRUCTIONS…" returned zero tasks). Three targeted prompt rules later, the suite passes **92.3%** and the injection is defeated — measured, not eyeballed.
 * **Ops-aware runner:** worker pool with backoff for free-tier rate limits, a repair pass for per-minute 429s, **abort on daily-quota exhaustion** (with a distinct exit code), per-run latency/token/cost reporting, `EVAL_API_KEY` so evals never starve production's quota, and a pass-rate threshold that can gate CI.
 * **Doubles as a router qualification test:** the same suite run on `llama-3.1-8b-instant` (≈10× cheaper) scores 36.9% — solid on structural planning (6/6 decompose) but hopeless at precision parsing (26% quick-add, 38% assignee accuracy). That's the measurement you need *before* cost-optimizing with model routing. Full details and the results table live in [`backend/evals/README.md`](backend/evals/README.md).
 
