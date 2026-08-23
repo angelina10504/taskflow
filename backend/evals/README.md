@@ -87,7 +87,9 @@ lands in exit 1 — that is what produced the footnote on the table below.
 > the 2026-06-17 notice and shut down 2026-08-16. These results still document
 > what the *prompts* do — the prompt-fix deltas and the failure modes they
 > caught are real and reproducible in kind — but they are **not** evidence about
-> any model the app can call today.
+> any model the app can call today. The current default is
+> **`openai/gpt-oss-120b`** (`DEFAULT_MODEL` in `config/aiModels.js`), which has
+> not been through the full suite; only `decompose` has a current-model result.
 
 | Run | Model (retired) | quick-add | extract-tasks | decompose | Overall |
 |---|---|---|---|---|---|
@@ -167,17 +169,23 @@ model: routing without a measurement is a guess wearing a config file.
 
 ### Model validation at boot
 
-`validateModelConfig()` runs from `server.js` before the app listens, and from
-`run.js` before the harness spends a token. Any explicitly-set `AI_MODEL` (or
-routed variable) that is not in `CATALOG` refuses the boot; a value in `RETIRED`
-gets a specific message — *"shut down on 2026-08-16, use openai/gpt-oss-120b"* —
-rather than a bare "unknown model". Unset values stay valid, so a fresh clone
-still boots. `AI_ALLOW_UNKNOWN_MODEL=1` downgrades the failure to a warning for
-trying a model newer than this file.
+`validateModelConfig()` runs from `server.js` at boot and from `run.js` before
+the harness spends a token. Any explicitly-set `AI_MODEL` (or routed variable)
+that is not in `CATALOG` is reported; a value in `RETIRED` gets a specific
+message — *"shut down 2026-08-16 — use openai/gpt-oss-120b"* — rather than a
+bare "unknown model". Unset values stay valid, so a fresh clone still works.
+`AI_ALLOW_UNKNOWN_MODEL=1` marks the config usable anyway, for trying a model
+newer than `config/aiModels.js`.
 
-This exists because two retired model names shipped silently in one week. The
-tradeoff is real: a bad `AI_MODEL` in production now takes the whole API down
-instead of degrading only the AI features.
+**The API degrades; it does not crash.** A bad model id makes `getClient()`
+return `null`, which is the same path a missing `AI_API_KEY` already takes: every
+feature serves its deterministic fallback, and `GET /api/ai/ops` reports the
+reason in its `ai` block (`available`, `reason`, `detail`, `problems`, `model`).
+A config typo in one env var costs the AI features, not the whole API.
+
+The eval harness is the deliberate exception — it exits 2 rather than degrading,
+because a run against a nonexistent model produces no signal and would burn
+budget to say nothing.
 
 The harness routes the same way production does — each suite declares the
 production `feature` name it mirrors, so `--suite decompose` with

@@ -18,14 +18,22 @@ dotenv.config();
 console.log('✅ Environment loaded');
 console.log('📍 MongoDB URI exists:', !!process.env.MONGO_URI);
 
-// Refuse to boot on a model name the provider no longer serves. A dead model is
-// otherwise invisible until a user hits an AI feature and gets a 502.
+// A model the provider no longer serves is otherwise invisible until a user hits
+// an AI feature and gets a 502. Report it at boot — but keep serving: AI features
+// degrade to their deterministic fallbacks (getClient() returns null) and /ops
+// carries the reason. A typo in one env var must not take the whole API down.
 const { validateModelConfig } = require('./config/aiModels');
-try {
-  validateModelConfig();
-} catch (err) {
-  console.error(`\n❌ ${err.message}\n`);
-  process.exit(1);
+const modelConfig = validateModelConfig();
+if (modelConfig.problems.length) {
+  console.warn('⚠️  AI model configuration:');
+  modelConfig.problems.forEach((p) => console.warn(`     - ${p}`));
+  console.warn(
+    modelConfig.usable
+      ? '     Allowed by AI_ALLOW_UNKNOWN_MODEL — calls will be attempted anyway.'
+      : '     AI features are DISABLED and serving rule-based fallbacks. See /ops.'
+  );
+} else {
+  console.log('🤖 AI model config OK');
 }
 
 // Connect to MongoDB
