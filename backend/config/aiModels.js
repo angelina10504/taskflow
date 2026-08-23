@@ -71,14 +71,15 @@ const costOf = (model, promptTokens, completionTokens) => {
   return ((promptTokens || 0) * r.inPerM + (completionTokens || 0) * r.outPerM) / 1e6;
 };
 
-// Fail at boot, not at 3am in production. Two dead model names shipped silently
-// in one week (llama-3.3-70b-versatile and llama-3.1-8b-instant, both retired
-// 2026-08-16); each would have been a one-line boot error instead of a 502 on a
-// user request. Only explicitly-set values are checked — unset stays valid, so
-// routing remains opt-in and a bare clone still boots.
+// Report on model configuration instead of enforcing it. Two dead model names
+// shipped silently in one week (llama-3.3-70b-versatile and llama-3.1-8b-instant,
+// both retired 2026-08-16), so a bad id must be visible — but a typo in one env
+// var should not take the whole API down. Callers degrade AI features and
+// surface `problems` on /ops, matching the getClient()-returns-null pattern.
 //
-// Escape hatch: AI_ALLOW_UNKNOWN_MODEL=1 downgrades this to a warning, so trying
-// a model Groq shipped this morning does not require editing this file first.
+// Only explicitly-set values are checked; unset stays valid so a bare clone
+// still works. AI_ALLOW_UNKNOWN_MODEL=1 marks the config usable anyway, for
+// trying a model newer than this file.
 const validateModelConfig = (env = process.env) => {
   const problems = [];
   for (const name of ['AI_MODEL', ...Object.values(FEATURE_MODEL_ENV)]) {
@@ -88,21 +89,12 @@ const validateModelConfig = (env = process.env) => {
     const dead = RETIRED.find((m) => m.id === value);
     problems.push(
       dead
-        ? `${name}="${value}" was shut down on ${dead.retiredOn}. Use "${dead.replacement}".`
-        : `${name}="${value}" is not a known model. Known: ${CATALOG.map((m) => m.id).join(', ')}.`
+        ? `${name}="${value}" shut down ${dead.retiredOn} — use "${dead.replacement}"`
+        : `${name}="${value}" is not a known model (known: ${CATALOG.map((m) => m.id).join(', ')})`
     );
   }
-  if (!problems.length) return { ok: true, problems: [] };
-
-  const detail = problems.map((p) => `  - ${p}`).join('\n');
-  if (/^(1|true|yes)$/i.test((env.AI_ALLOW_UNKNOWN_MODEL || '').trim())) {
-    console.warn(`[aiModels] model config not recognized (AI_ALLOW_UNKNOWN_MODEL is set):\n${detail}`);
-    return { ok: false, problems, allowed: true };
-  }
-  throw new Error(
-    `Invalid AI model configuration in .env:\n${detail}\n` +
-      '  Fix the value, or set AI_ALLOW_UNKNOWN_MODEL=1 to boot anyway.'
-  );
+  const allowed = /^(1|true|yes)$/i.test((env.AI_ALLOW_UNKNOWN_MODEL || '').trim());
+  return { ok: problems.length === 0, problems, allowed, usable: problems.length === 0 || allowed };
 };
 
 module.exports = {

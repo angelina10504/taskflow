@@ -198,17 +198,24 @@ const runSuite = async (ai, name, suite, cases, { concurrency }) => {
 };
 
 const main = async () => {
-  // Catch a dead or misspelled model before spending a single token on it.
-  try {
-    validateModelConfig();
-  } catch (err) {
-    console.error(err.message);
+  // Catch a dead or misspelled model before spending a single token on it. The
+  // harness fails hard where the API degrades: a run against a nonexistent model
+  // produces no signal, so exit 2 (config error) rather than burn the budget.
+  const modelConfig = validateModelConfig();
+  if (!modelConfig.usable) {
+    modelConfig.problems.forEach((p) => console.error(`Model config: ${p}`));
+    console.error('Fix .env, or set AI_ALLOW_UNKNOWN_MODEL=1 to run anyway.');
     process.exit(2);
   }
+  modelConfig.problems.forEach((p) => console.warn(`⚠ ${p} (allowed by AI_ALLOW_UNKNOWN_MODEL)`));
 
   const ai = getClient();
   if (!ai) {
-    console.error('No AI key configured — set AI_API_KEY in backend/.env before running evals.');
+    console.error(
+      'No AI key configured — set EVAL_API_KEY in backend/.env (preferred: a separate\n' +
+        'key, so eval runs cannot starve the running app), or AI_API_KEY to reuse the\n' +
+        "app's own key."
+    );
     process.exit(2);
   }
 

@@ -4,7 +4,7 @@ const Workspace = require('../models/Workspace');
 const HealthReport = require('../models/HealthReport');
 const DailyPlan = require('../models/DailyPlan');
 const { computeVelocityStats } = require('../utils/velocityStats');
-const { getClient, getModel } = require('../utils/aiClient');
+const { getClient, getModel, aiStatus } = require('../utils/aiClient');
 const { scanProject } = require('../utils/riskRadar');
 const { notifyAssignment } = require('../utils/taskNotify');
 const { searchTasks, findSimilar } = require('../utils/taskSearch');
@@ -1518,10 +1518,21 @@ const getAiOps = async (req, res) => {
       at: r.createdAt,
     });
 
+    // Why AI is or is not working right now — a missing key and a retired model
+    // both land here rather than as mystery fallbacks on the board.
+    const status = aiStatus();
+
     res.status(200).json({
       success: true,
       generatedAt: now,
       budget: TOKEN_BUDGET,
+      ai: {
+        available: status.available,
+        reason: status.reason,
+        detail: status.detail,
+        problems: status.problems,
+        model: status.model || null,
+      },
       today: {
         calls: todayCalls.length,
         tokens: tokensToday,
