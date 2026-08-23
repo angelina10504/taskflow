@@ -170,26 +170,33 @@ at `llama-3.3-70b-versatile` eight days after it was shut down. Nothing failed l
 surfaced only when the model name was checked by hand. This produced the `RETIRED` tombstone list and the
 config validation described below.
 
-**A routing hypothesis the data killed.** The plan was to route `decompose` — structural planning, low
-precision requirements — to a cheaper model. On quality it worked: `openai/gpt-oss-20b` scored **6/6 on
-decompose**, matching the larger model. On cost it did not:
+**A routing hypothesis that quality passed and cost did not settle.** The plan was to route `decompose` —
+structural planning, low precision requirements — to a cheaper model. On quality it worked:
+`openai/gpt-oss-20b` scored **6/6 on decompose**, matching what the retired large model scored on the same
+six cases. On cost, the measurement does not support a conclusion either way:
 
-| | `llama-3.3-70b-versatile` (Jul, retired) | `openai/gpt-oss-20b` (2026-08-24) |
+| | `openai/gpt-oss-20b` (measured 2026-08-24) | `openai/gpt-oss-120b` (current default) |
 |---|---|---|
-| Input tokens | 2,329 | 2,624 |
-| Output tokens | 2,456 | **6,048 (2.5×)** |
-| p50 latency | 8,196 ms | **14,483 ms (1.8×)** |
-| Measured cost | — | **$0.0020** |
+| decompose score | **6/6** | not run |
+| Input tokens | 2,624 | not measured |
+| Output tokens | 6,048 | not measured |
+| p50 latency | 14,483 ms | not measured |
+| Cost | **$0.0020** | not measured |
 
 `gpt-oss-20b` is priced at exactly half `gpt-oss-120b` per token ($0.075/$0.30 vs $0.15/$0.60 per 1M
-in/out), but emitted 2.5× the output tokens. That cancels the discount: the measured run cost $0.0020,
-while the same workload on the larger model projects to roughly $0.0018. A per-token price advantage is
-not a per-request cost advantage when the cheaper model is more verbose.
+in/out), so on price alone routing looks like a 2× saving. What complicates it is verbosity: the 20b run
+emitted 6,048 output tokens against the 2,456 that `llama-3.3-70b-versatile` emitted on the same six cases
+in July, and it was slower (p50 14,483 ms vs 8,196 ms). If the current default is similarly terse, that
+2.5× output inflation cancels the per-token discount and routing is pointless.
 
-**Routing is therefore built and deliberately switched off.** `FEATURE_MODEL_ENV` in `config/aiModels.js`
-is empty. The mechanism works and is tested; the evidence that would justify using it does not exist, so
-no feature is mapped. Re-enabling it needs a measured comparison against the current default, not a
-projection from a retired model's token counts.
+**But that comparison is against a retired model on a different tokenizer, so it does not establish
+anything about `gpt-oss-120b`.** Projecting the 120b side from `llama-3.3-70b-versatile`'s token counts is
+exactly the kind of assumption this harness exists to catch, so the projection is not made here. The
+question is open and needs one measured `gpt-oss-120b` decompose run — roughly 9k tokens — to close.
+
+**Routing is therefore built and switched off.** `FEATURE_MODEL_ENV` in `config/aiModels.js` is empty. The
+mechanism works and is tested; the evidence that would justify turning it on does not exist yet. Shipping
+it on an unmeasured cost assumption would be the same class of mistake as the deprecation incident above.
 
 ## Model configuration
 

@@ -106,16 +106,21 @@ lands in exit 1 — that is what produced the footnote on the table below.
 | 2026-08-24 | Router qualification | `openai/gpt-oss-20b` | **6/6** | 2,624 / 6,048 | $0.0020 | 14,483 ms |
 
 Quality on `decompose` holds at 6/6 on the small current model — the structural
-finding from the retired 8B model replicated. **The cost premise did not.**
-`gpt-oss-20b` emitted **2.5× the output tokens** of the old baseline (6,048 vs
-2,456), which cancels its 2× per-token discount: the measured run cost $0.0020,
-while the same workload on `gpt-oss-120b` projects to ~$0.0018. It is also
-**~1.8× slower** (p50 14.5s vs 8.2s). A per-token price advantage is not a
-per-request cost advantage when the cheaper model is more verbose.
+finding from the retired 8B model replicated. **The cost premise is unresolved.**
+
+`gpt-oss-20b` is half the per-token price of `gpt-oss-120b` ($0.075/$0.30 vs
+$0.15/$0.60 per 1M in/out), but it emitted 6,048 output tokens where
+`llama-3.3-70b-versatile` emitted 2,456 on the same six cases, and it was slower
+(p50 14.5s vs 8.2s). If the current default is similarly terse, that 2.5× output
+inflation cancels the discount and routing buys nothing.
+
+**That comparison is against a retired model on a different tokenizer, so it
+says nothing definitive about `gpt-oss-120b`.** No 120b decompose run exists, so
+no 120b cost figure is stated here — projecting one from a retired model's token
+counts is exactly the assumption this harness exists to prevent.
 
 Routing therefore stays **disabled** pending a measured `gpt-oss-120b` decompose
-run — projecting the 120b side from a retired model's token counts is exactly
-the kind of assumption this harness exists to prevent.
+run (~9k tokens). Quality is settled; cost is not.
 
 ¹ the one decompose miss was a free-tier 429, not a quality failure — the same
 case passes at baseline with an identical prompt.
