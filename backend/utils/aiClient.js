@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 
 // Provider-agnostic: any OpenAI-compatible endpoint works (Groq, Gemini, OpenRouter,
 // local Ollama, …). Defaults target Groq's free tier; override via .env.
-const MODEL = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
+const MODEL = process.env.AI_MODEL || 'openai/gpt-oss-120b';
 const BASE_URL = process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1';
 
 // Treat any unset key or "your_..._here" style placeholder as "no key configured"
