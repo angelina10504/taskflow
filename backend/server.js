@@ -18,6 +18,16 @@ dotenv.config();
 console.log('✅ Environment loaded');
 console.log('📍 MongoDB URI exists:', !!process.env.MONGO_URI);
 
+// Refuse to boot on a model name the provider no longer serves. A dead model is
+// otherwise invisible until a user hits an AI feature and gets a 502.
+const { validateModelConfig } = require('./config/aiModels');
+try {
+  validateModelConfig();
+} catch (err) {
+  console.error(`\n❌ ${err.message}\n`);
+  process.exit(1);
+}
+
 // Connect to MongoDB
 connectDB();
 

@@ -9,17 +9,16 @@
 # app. One full run is ~63k, so the nightly must stay at one run/day and the PR
 # job must stay small. EVAL_API_KEY is a separate key from the production one so
 # eval runs never eat production's budget.
+#
+# The job name is static (`ai-evals`) and the workflow has NO `paths:` filter on
+# purpose: a required status check must report on every PR or the PR can never
+# become mergeable. Path filtering happens inside the job instead, where an
+# unrelated PR can report success without installing anything or calling the API.
+# This workflow carries no model name — config/aiModels.js owns that.
 name: AI evals
 
 on:
   pull_request:
-    paths:
-      - 'backend/controllers/aiController.js'
-      - 'backend/utils/aiClient.js'
-      - 'backend/utils/aiLog.js'
-      - 'backend/utils/riskRadar.js'
-      - 'backend/evals/**'
-      - '.github/workflows/ai-evals.yml'
   schedule:
     # 02:17 UTC — off the hour so it doesn't pile onto the top-of-hour rush,
     # and early enough that a failure is waiting when you start the day.
@@ -48,8 +47,9 @@ permissions:
   contents: read
 
 jobs:
-  evals:
-    name: ${{ github.event_name == 'pull_request' && 'smoke' || 'full suite' }}
+  # Static name — this is the string to require in branch protection.
+  ai-evals:
+    name: ai-evals
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -57,16 +57,42 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
+          # Full history so a PR can be diffed against its base commit.
+          fetch-depth: 0
+
+      # Path filtering lives here rather than in `on:` so the check always
+      # reports. A PR that touches no AI code passes without spending a token.
+      # If the diff cannot be computed we run the evals — failing safe means
+      # running a gate we did not need, never skipping one we did.
+      - name: Detect AI-relevant changes
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" 2>/dev/null); then
+            echo "::warning title=Could not diff PR::Falling back to running the evals."
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"; echo "$CHANGED"
+          PATTERN='^(backend/(controllers/aiController\.js|utils/(aiClient|aiLog|riskRadar)\.js|config/aiModels\.js|evals/)|\.github/workflows/ai-evals\.yml)'
+          if echo "$CHANGED" | grep -Eq "$PATTERN"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            { echo "### AI evals — not applicable"; echo; echo "This PR changes no AI controller, prompt, model-config, or eval file, so no eval ran."; } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # Forked PRs get no secrets. That is a skip, not a failure — reporting it
       # as a config error would train everyone to ignore a red X.
       - name: Check for eval key
+        if: steps.changed.outputs.relevant == 'true'
         id: key
         env:
           EVAL_API_KEY: ${{ secrets.EVAL_API_KEY }}
@@ -78,6 +104,13 @@ jobs:
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.present == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         if: steps.key.outputs.present == 'true'
@@ -122,25 +155,28 @@ jobs:
               echo "label=manual: suite=$IN_SUITE threshold=$IN_THRESHOLD" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              # Best recorded state is ~66/71 (93%). 0.90 requires 64/71, leaving
-              # two cases of slack for free-tier flake without going red; below
-              # 0.80 would mean regressing past the pre-prompt-fix baseline.
+              # 0.90 is NOT derived from a measurement of the current default
+              # model — every recorded result in evals/README.md is
+              # llama-3.3-70b-versatile. Re-derive this from a full baseline on
+              # whatever DEFAULT_MODEL is before treating it as evidence.
               echo "args=--threshold 0.90 --out results/ci-nightly.json" >> "$GITHUB_OUTPUT"
               echo "label=full suite (71 cases, all four suites)" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
       # run.js maps EVAL_API_KEY onto AI_API_KEY itself, so the production key is
-      # never referenced here. Exit code is captured, not thrown, so the next step
-      # can tell a quality regression from a quota abort.
+      # never referenced here. Model names come from repo variables when set and
+      # from config/aiModels.js when not — no model literal lives in this file.
+      # Exit code is captured, not thrown, so the next step can tell a quality
+      # regression from a quota abort.
       - name: Run evals
         if: steps.key.outputs.present == 'true'
         id: run
         env:
           EVAL_API_KEY: ${{ secrets.EVAL_API_KEY }}
-          AI_MODEL: ${{ vars.EVAL_AI_MODEL || 'llama-3.3-70b-versatile' }}
-          # Inert until per-feature routing lands (Task 2). Set the repo variable
-          # EVAL_AI_MODEL_CHEAP to make CI exercise the same routing production uses.
+          AI_MODEL: ${{ vars.EVAL_AI_MODEL }}
+          # Set EVAL_AI_MODEL_CHEAP to make CI exercise the same per-feature
+          # routing production uses; unset means every feature runs on AI_MODEL.
           AI_MODEL_CHEAP: ${{ vars.EVAL_AI_MODEL_CHEAP }}
         run: |
           set +e

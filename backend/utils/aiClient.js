@@ -1,9 +1,15 @@
 const OpenAI = require('openai');
+const { modelFor } = require('../config/aiModels');
 
 // Provider-agnostic: any OpenAI-compatible endpoint works (Groq, Gemini, OpenRouter,
 // local Ollama, …). Defaults target Groq's free tier; override via .env.
-const MODEL = process.env.AI_MODEL || 'openai/gpt-oss-120b';
 const BASE_URL = process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1';
+
+// Which model a given feature calls. Every call site names its feature — the
+// same string it already passes to loggedChat — so routing decisions live in
+// config/aiModels.js rather than being scattered across controllers.
+// Unrouted features get AI_MODEL; see FEATURE_MODEL_ENV for what is routed.
+const getModel = (feature) => modelFor(feature);
 
 // Treat any unset key or "your_..._here" style placeholder as "no key configured"
 // so callers fall back gracefully instead of erroring.
@@ -18,4 +24,4 @@ const getClient = () => {
   return client;
 };
 
-module.exports = { getClient, MODEL };
+module.exports = { getClient, getModel };

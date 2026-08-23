@@ -4,12 +4,13 @@ const Workspace = require('../models/Workspace');
 const HealthReport = require('../models/HealthReport');
 const DailyPlan = require('../models/DailyPlan');
 const { computeVelocityStats } = require('../utils/velocityStats');
-const { getClient, MODEL } = require('../utils/aiClient');
+const { getClient, getModel } = require('../utils/aiClient');
 const { scanProject } = require('../utils/riskRadar');
 const { notifyAssignment } = require('../utils/taskNotify');
 const { searchTasks, findSimilar } = require('../utils/taskSearch');
 const { buildFeatures, baseScore, planCapacity, ruleReason, knnEstimate } = require('../utils/todayPlan');
 const { loggedChat, recordAiEvent } = require('../utils/aiLog');
+const { costOf } = require('../config/aiModels');
 const AiCall = require('../models/AiCall');
 
 const checkWorkspaceMembership = async (workspaceId, userId) => {
@@ -130,7 +131,7 @@ const getVelocityInsights = async (req, res) => {
     const completion = await loggedChat(
       ai,
       {
-        model: MODEL,
+        model: getModel('velocity'),
         max_tokens: 1024,
         response_format: { type: 'json_object' },
         messages: [
@@ -428,7 +429,7 @@ const commandBoard = async (req, res) => {
       const completion = await loggedChat(
         ai,
         {
-          model: MODEL,
+          model: getModel('command'),
           max_tokens: 1024,
           tools: COMMAND_TOOLS,
           messages,
@@ -607,7 +608,7 @@ const quickAddTask = async (req, res) => {
         const completion = await loggedChat(
           ai,
           {
-            model: MODEL,
+            model: getModel('quick_add'),
             max_tokens: 300,
             response_format: { type: 'json_object' },
             messages: [
@@ -763,7 +764,7 @@ const extractTasksFromNotes = async (req, res) => {
     const completion = await loggedChat(
       ai,
       {
-        model: MODEL,
+        model: getModel('extract'),
         max_tokens: 1500,
         response_format: { type: 'json_object' },
         messages: [
@@ -874,7 +875,7 @@ const decomposeProject = async (req, res) => {
     const completion = await loggedChat(
       ai,
       {
-        model: MODEL,
+        model: getModel('decompose'),
         max_tokens: 1800,
         response_format: { type: 'json_object' },
         messages: [
@@ -1128,7 +1129,7 @@ const askBoard = async (req, res) => {
     const completion = await loggedChat(
       ai,
       {
-        model: MODEL,
+        model: getModel('ask'),
         max_tokens: 400,
         response_format: { type: 'json_object' },
         messages: [
@@ -1338,7 +1339,7 @@ const getTodayPlan = async (req, res) => {
         const completion = await loggedChat(
           ai,
           {
-            model: MODEL,
+            model: getModel('today'),
             max_tokens: 900,
             response_format: { type: 'json_object' },
             messages: [
@@ -1439,16 +1440,10 @@ const getTodayPlan = async (req, res) => {
 // show up on a dashboard, not as production 429s. Override via TOKEN_BUDGET.
 const TOKEN_BUDGET = Math.max(parseInt(process.env.TOKEN_BUDGET, 10) || 100000, 1);
 
-// Approximate Groq list prices per 1M tokens (USD). Order-of-magnitude cost
-// visibility for the ops page — not billing.
-const MODEL_RATES = [
-  { match: '70b', inPerM: 0.59, outPerM: 0.79 },
-  { match: '8b', inPerM: 0.05, outPerM: 0.08 },
-];
-const callCost = (r) => {
-  const rate = MODEL_RATES.find((m) => (r.model || '').includes(m.match)) || MODEL_RATES[0];
-  return ((r.promptTokens || 0) * rate.inPerM + (r.completionTokens || 0) * rate.outPerM) / 1e6;
-};
+// Order-of-magnitude cost visibility for the ops page — not billing. Rates come
+// from config/aiModels.js so a routed model is priced at its own rate rather
+// than the default's.
+const callCost = (r) => costOf(r.model, r.promptTokens, r.completionTokens);
 
 // @desc    AI observability: token spend vs daily budget, latency, outcomes
 // @route   GET /api/ai/ops

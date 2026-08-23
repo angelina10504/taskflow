@@ -1,0 +1,98 @@
+{
+  "ranAt": "2026-08-23T19:52:26.008Z",
+  "model": "openai/gpt-oss-20b",
+  "models": {
+    "decompose": "openai/gpt-oss-20b"
+  },
+  "pinnedClock": "2026-07-01T12:00:00Z",
+  "aborted": false,
+  "overall": {
+    "passed": 6,
+    "total": 6,
+    "passRate": 1
+  },
+  "latencyMs": {
+    "p50": 14483,
+    "max": 33559
+  },
+  "tokens": {
+    "in": 2624,
+    "out": 6048,
+    "estCostUsd": 0.002
+  },
+  "suites": {
+    "decompose": {
+      "model": "openai/gpt-oss-20b",
+      "passed": 6,
+      "total": 6,
+      "cases": [
+        {
+          "id": "dc-02-beta-launch",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 1898,
+          "usage": {
+            "prompt": 438,
+            "completion": 1228
+          }
+        },
+        {
+          "id": "dc-01-stripe",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 2260,
+          "usage": {
+            "prompt": 438,
+            "completion": 1471
+          }
+        },
+        {
+          "id": "dc-03-atlas-migration",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 10377,
+          "usage": {
+            "prompt": 437,
+            "completion": 794
+          }
+        },
+        {
+          "id": "dc-05-cicd",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 14483,
+          "usage": {
+            "prompt": 438,
+            "completion": 1038
+          }
+        },
+        {
+          "id": "dc-04-notifications",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 33559,
+          "usage": {
+            "prompt": 434,
+            "completion": 820
+          }
+        },
+        {
+          "id": "dc-06-rbac",
+          "category": null,
+          "pass": true,
+          "fails": [],
+          "latencyMs": 19429,
+          "usage": {
+            "prompt": 439,
+            "completion": 697
+          }
+        }
+      ]
+    }
+  }
+}
