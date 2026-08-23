@@ -129,3 +129,13 @@ export const getTodayPlan = async (refresh = false) => {
     throw error.response?.data || { message: 'Could not load today’s plan' };
   }
 };
+
+// Observability: token spend vs daily budget, latency, outcomes (content-free)
+export const getAiOps = async () => {
+  try {
+    const response = await api.get('/api/ai/ops');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Could not load AI operations' };
+  }
+};

@@ -4,6 +4,7 @@ const HealthReport = require('../models/HealthReport');
 require('../models/User'); // registers the User schema for .populate('assignedTo')
 const { computeVelocityStats } = require('./velocityStats');
 const { getClient, MODEL } = require('./aiClient');
+const { loggedChat } = require('./aiLog');
 
 // Risk is derived deterministically from the computed stats — the LLM never
 // decides the risk level, it only phrases the headline.
@@ -64,7 +65,8 @@ const scanProject = async (projectId, io, trigger = 'manual') => {
   const ai = getClient();
   if (ai && riskLevel !== 'on_track') {
     try {
-      const completion = await ai.chat.completions.create({
+      // Scans run from boot/cron/socket triggers — no user in scope.
+      const completion = await loggedChat(ai, {
         model: MODEL,
         max_tokens: 80,
         messages: [
@@ -85,7 +87,7 @@ const scanProject = async (projectId, io, trigger = 'manual') => {
             }),
           },
         ],
-      });
+      }, { feature: 'health', detail: trigger });
       const text = completion.choices?.[0]?.message?.content?.trim();
       if (text) {
         headline = text.replace(/^"+|"+$/g, '');

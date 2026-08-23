@@ -9,6 +9,8 @@ const { scanProject } = require('../utils/riskRadar');
 const { notifyAssignment } = require('../utils/taskNotify');
 const { searchTasks, findSimilar } = require('../utils/taskSearch');
 const { buildFeatures, baseScore, planCapacity, ruleReason, knnEstimate } = require('../utils/todayPlan');
+const { loggedChat, recordAiEvent } = require('../utils/aiLog');
+const AiCall = require('../models/AiCall');
 
 const checkWorkspaceMembership = async (workspaceId, userId) => {
   const workspace = await Workspace.findById(workspaceId);
@@ -125,22 +127,26 @@ const getVelocityInsights = async (req, res) => {
       });
     }
 
-    const completion = await ai.chat.completions.create({
-      model: MODEL,
-      max_tokens: 1024,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `Here are the computed metrics for project "${stats.project.name}". Interpret them per your instructions and return the JSON object.\n\n${JSON.stringify(
-            stats,
-            null,
-            2
-          )}`,
-        },
-      ],
-    });
+    const completion = await loggedChat(
+      ai,
+      {
+        model: MODEL,
+        max_tokens: 1024,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `Here are the computed metrics for project "${stats.project.name}". Interpret them per your instructions and return the JSON object.\n\n${JSON.stringify(
+              stats,
+              null,
+              2
+            )}`,
+          },
+        ],
+      },
+      { user: req.user.id, feature: 'velocity' }
+    );
 
     const text = completion.choices?.[0]?.message?.content || '';
     let insights;
@@ -150,6 +156,7 @@ const getVelocityInsights = async (req, res) => {
       insights = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
     } catch (parseErr) {
       console.error('AI insights parse error:', parseErr, 'raw:', text);
+      recordAiEvent({ user: req.user.id, feature: 'velocity', outcome: 'rejected', detail: 'unparseable model output — served rule-based fallback' });
       insights = buildFallback(stats);
     }
 
@@ -418,12 +425,16 @@ const commandBoard = async (req, res) => {
 
     let reply = '';
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const completion = await ai.chat.completions.create({
-        model: MODEL,
-        max_tokens: 1024,
-        tools: COMMAND_TOOLS,
-        messages,
-      });
+      const completion = await loggedChat(
+        ai,
+        {
+          model: MODEL,
+          max_tokens: 1024,
+          tools: COMMAND_TOOLS,
+          messages,
+        },
+        { user: req.user.id, feature: 'command' }
+      );
 
       const msg = completion.choices?.[0]?.message;
       if (!msg) break;
@@ -593,15 +604,19 @@ const quickAddTask = async (req, res) => {
         members: members.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email })),
       };
       try {
-        const completion = await ai.chat.completions.create({
-          model: MODEL,
-          max_tokens: 300,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: QUICK_ADD_SYSTEM },
-            { role: 'user', content: JSON.stringify(payload, null, 2) },
-          ],
-        });
+        const completion = await loggedChat(
+          ai,
+          {
+            model: MODEL,
+            max_tokens: 300,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: QUICK_ADD_SYSTEM },
+              { role: 'user', content: JSON.stringify(payload, null, 2) },
+            ],
+          },
+          { user: req.user.id, feature: 'quick_add' }
+        );
         const out = completion.choices?.[0]?.message?.content || '';
         const candidate = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
         if (candidate && typeof candidate.title === 'string' && candidate.title.trim()) {
@@ -610,6 +625,10 @@ const quickAddTask = async (req, res) => {
         }
       } catch (err) {
         // Parsing is best-effort: fall back to the raw text rather than failing the add.
+        // (Provider errors are already logged by loggedChat — only flag parse rejections.)
+        if (err instanceof SyntaxError) {
+          recordAiEvent({ user: req.user.id, feature: 'quick_add', outcome: 'rejected', detail: 'unparseable model output — used raw text as title' });
+        }
         console.error('Quick-add AI parse failed, using raw title:', err.message);
       }
     }
@@ -741,15 +760,19 @@ const extractTasksFromNotes = async (req, res) => {
       members: members.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email })),
     };
 
-    const completion = await ai.chat.completions.create({
-      model: MODEL,
-      max_tokens: 1500,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: EXTRACT_SYSTEM },
-        { role: 'user', content: JSON.stringify(payload, null, 2) },
-      ],
-    });
+    const completion = await loggedChat(
+      ai,
+      {
+        model: MODEL,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: EXTRACT_SYSTEM },
+          { role: 'user', content: JSON.stringify(payload, null, 2) },
+        ],
+      },
+      { user: req.user.id, feature: 'extract' }
+    );
 
     const out = completion.choices?.[0]?.message?.content || '';
     let rawItems = [];
@@ -758,6 +781,7 @@ const extractTasksFromNotes = async (req, res) => {
       rawItems = Array.isArray(parsed.items) ? parsed.items : [];
     } catch (parseErr) {
       console.error('Notes extraction parse error:', parseErr, 'raw:', out);
+      recordAiEvent({ user: req.user.id, feature: 'extract', outcome: 'rejected', detail: 'unparseable model output — asked user to retry' });
       return res.status(502).json({ success: false, message: 'The AI returned an unreadable response — try again.' });
     }
 
@@ -847,15 +871,19 @@ const decomposeProject = async (req, res) => {
       project: { name: project.name, description: project.description || null },
     };
 
-    const completion = await ai.chat.completions.create({
-      model: MODEL,
-      max_tokens: 1800,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: DECOMPOSE_SYSTEM },
-        { role: 'user', content: JSON.stringify(payload, null, 2) },
-      ],
-    });
+    const completion = await loggedChat(
+      ai,
+      {
+        model: MODEL,
+        max_tokens: 1800,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: DECOMPOSE_SYSTEM },
+          { role: 'user', content: JSON.stringify(payload, null, 2) },
+        ],
+      },
+      { user: req.user.id, feature: 'decompose' }
+    );
 
     const out = completion.choices?.[0]?.message?.content || '';
     let rawItems = [];
@@ -864,6 +892,7 @@ const decomposeProject = async (req, res) => {
       rawItems = Array.isArray(parsed.items) ? parsed.items : [];
     } catch (parseErr) {
       console.error('Decompose parse error:', parseErr, 'raw:', out);
+      recordAiEvent({ user: req.user.id, feature: 'decompose', outcome: 'rejected', detail: 'unparseable model output — asked user to retry' });
       return res.status(502).json({ success: false, message: 'The AI returned an unreadable response — try again.' });
     }
 
@@ -1096,15 +1125,19 @@ const askBoard = async (req, res) => {
       })),
     };
 
-    const completion = await ai.chat.completions.create({
-      model: MODEL,
-      max_tokens: 400,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: ASK_SYSTEM },
-        { role: 'user', content: JSON.stringify(payload, null, 2) },
-      ],
-    });
+    const completion = await loggedChat(
+      ai,
+      {
+        model: MODEL,
+        max_tokens: 400,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: ASK_SYSTEM },
+          { role: 'user', content: JSON.stringify(payload, null, 2) },
+        ],
+      },
+      { user: req.user.id, feature: 'ask' }
+    );
 
     const out = completion.choices?.[0]?.message?.content || '';
     let answer = null;
@@ -1117,6 +1150,7 @@ const askBoard = async (req, res) => {
       }
     } catch (parseErr) {
       console.error('Ask board parse error:', parseErr, 'raw:', out);
+      recordAiEvent({ user: req.user.id, feature: 'ask', outcome: 'rejected', detail: 'unparseable model output — served retrieval-only results' });
       // Fall through: the user still gets the retrieved sources.
     }
 
@@ -1203,6 +1237,8 @@ const getTodayPlan = async (req, res) => {
         populate: { path: 'project', select: 'name icon color' },
       });
       if (cached) {
+        // A cache hit is a provider call we didn't make — worth counting.
+        recordAiEvent({ user: req.user.id, feature: 'today', outcome: 'cache', detail: 'served cached daily plan' });
         const picks = cached.picks.filter((p) => p.task && p.task.status !== 'done');
         return res.status(200).json({
           success: true,
@@ -1299,15 +1335,19 @@ const getTodayPlan = async (req, res) => {
         })),
       };
       try {
-        const completion = await ai.chat.completions.create({
-          model: MODEL,
-          max_tokens: 900,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: TODAY_SYSTEM },
-            { role: 'user', content: JSON.stringify(payload) },
-          ],
-        });
+        const completion = await loggedChat(
+          ai,
+          {
+            model: MODEL,
+            max_tokens: 900,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: TODAY_SYSTEM },
+              { role: 'user', content: JSON.stringify(payload) },
+            ],
+          },
+          { user: req.user.id, feature: 'today' }
+        );
         const text = completion.choices?.[0]?.message?.content || '';
         const parsed = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
         const byId = new Map(candidates.map((c) => [String(c.task._id), c]));
@@ -1324,6 +1364,7 @@ const getTodayPlan = async (req, res) => {
           briefing = String(parsed.briefing || '').slice(0, 400);
           aiAvailable = true;
         } else {
+          recordAiEvent({ user: req.user.id, feature: 'today', outcome: 'rejected', detail: 'picks failed validation — served deterministic plan' });
           console.warn('[today] model output rejected by validation — using deterministic plan');
         }
       } catch (err) {
@@ -1390,6 +1431,132 @@ const getTodayPlan = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// AI observability
+// ---------------------------------------------------------------------------
+
+// Groq's free tier resets daily — surface spend against it so quota surprises
+// show up on a dashboard, not as production 429s. Override via TOKEN_BUDGET.
+const TOKEN_BUDGET = Math.max(parseInt(process.env.TOKEN_BUDGET, 10) || 100000, 1);
+
+// Approximate Groq list prices per 1M tokens (USD). Order-of-magnitude cost
+// visibility for the ops page — not billing.
+const MODEL_RATES = [
+  { match: '70b', inPerM: 0.59, outPerM: 0.79 },
+  { match: '8b', inPerM: 0.05, outPerM: 0.08 },
+];
+const callCost = (r) => {
+  const rate = MODEL_RATES.find((m) => (r.model || '').includes(m.match)) || MODEL_RATES[0];
+  return ((r.promptTokens || 0) * rate.inPerM + (r.completionTokens || 0) * rate.outPerM) / 1e6;
+};
+
+// @desc    AI observability: token spend vs daily budget, latency, outcomes
+// @route   GET /api/ai/ops
+// @access  Private — AiCall rows are content- and identity-free by design
+//          (no prompt/response text, no user exposed in the response), so
+//          system-wide metrics are safe for any signed-in user.
+const getAiOps = async (req, res) => {
+  try {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
+    // Provider quotas reset on the UTC day — measure "today" the same way.
+    const utcDayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+    // JS aggregation over recent rows: trivially fast at this scale (the 30d
+    // TTL bounds the collection); swap for a pipeline if volume ever demands.
+    const rows = await AiCall.find({ createdAt: { $gte: weekAgo } })
+      .sort('-createdAt')
+      .limit(2000)
+      .lean();
+
+    const tokensOf = (r) => (r.promptTokens || 0) + (r.completionTokens || 0);
+    const sum = (list, f) => list.reduce((acc, r) => acc + f(r), 0);
+    const isCall = (r) => r.outcome === 'ok' || r.outcome === 'error';
+
+    const calls = rows.filter(isCall);
+    const todayRows = rows.filter((r) => r.createdAt >= utcDayStart);
+    const todayCalls = todayRows.filter(isCall);
+    const tokensToday = sum(todayCalls, tokensOf);
+
+    // Per-feature rollup over the week: volume, spend, latency, degradations.
+    const byFeature = {};
+    for (const r of rows) {
+      const f = (byFeature[r.feature] ||= { feature: r.feature, calls: 0, tokens: 0, latencies: [], errors: 0, rejected: 0, cacheHits: 0 });
+      if (isCall(r)) {
+        f.calls += 1;
+        f.tokens += tokensOf(r);
+        f.latencies.push(r.latencyMs || 0);
+        if (r.outcome === 'error') f.errors += 1;
+      } else if (r.outcome === 'rejected') f.rejected += 1;
+      else if (r.outcome === 'cache') f.cacheHits += 1;
+    }
+    const features = Object.values(byFeature)
+      .map(({ latencies, ...f }) => {
+        const sorted = [...latencies].sort((a, b) => a - b);
+        return {
+          ...f,
+          avgMs: sorted.length ? Math.round(sorted.reduce((a, b) => a + b, 0) / sorted.length) : 0,
+          p95Ms: sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))] : 0,
+        };
+      })
+      .sort((a, b) => b.calls - a.calls);
+
+    // Daily token spend for the 7-day chart (UTC buckets, oldest first).
+    const tokensByDay = [];
+    for (let i = 6; i >= 0; i--) {
+      const d0 = new Date(utcDayStart.getTime() - i * 86400000);
+      const d1 = new Date(d0.getTime() + 86400000);
+      tokensByDay.push({
+        date: d0.toISOString().slice(0, 10),
+        tokens: sum(calls.filter((r) => r.createdAt >= d0 && r.createdAt < d1), tokensOf),
+      });
+    }
+
+    const weekDegraded = calls.filter((r) => r.outcome === 'error').length + rows.filter((r) => r.outcome === 'rejected').length;
+    const shape = (r) => ({
+      feature: r.feature,
+      model: r.model || null,
+      tokens: tokensOf(r),
+      latencyMs: r.latencyMs || 0,
+      outcome: r.outcome,
+      detail: r.detail || null,
+      at: r.createdAt,
+    });
+
+    res.status(200).json({
+      success: true,
+      generatedAt: now,
+      budget: TOKEN_BUDGET,
+      today: {
+        calls: todayCalls.length,
+        tokens: tokensToday,
+        pctBudget: Math.min(100, Math.round((tokensToday / TOKEN_BUDGET) * 100)),
+        cost: +sum(todayCalls, callCost).toFixed(4),
+        errors: todayCalls.filter((r) => r.outcome === 'error').length,
+        rejected: todayRows.filter((r) => r.outcome === 'rejected').length,
+        cacheHits: todayRows.filter((r) => r.outcome === 'cache').length,
+      },
+      week: {
+        calls: calls.length,
+        tokens: sum(calls, tokensOf),
+        cost: +sum(calls, callCost).toFixed(4),
+        avgMs: calls.length ? Math.round(sum(calls, (r) => r.latencyMs || 0) / calls.length) : 0,
+        // "Degraded" = the model was called but code served a fallback
+        // (provider error or validation rejection). The honesty metric.
+        degradedRate: calls.length ? Math.round((weekDegraded / calls.length) * 100) : 0,
+        cacheHits: rows.filter((r) => r.outcome === 'cache').length,
+      },
+      tokensByDay,
+      features,
+      recent: rows.slice(0, 30).map(shape),
+      errors: rows.filter((r) => r.outcome === 'error').slice(0, 10).map(shape),
+    });
+  } catch (error) {
+    console.error('AI ops error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getVelocityInsights,
   commandBoard,
@@ -1404,6 +1571,7 @@ module.exports = {
   askBoard,
   globalSearch,
   getTodayPlan,
+  getAiOps,
 };
 
 // Internals exposed ONLY for the eval harness (backend/evals), so evals always
