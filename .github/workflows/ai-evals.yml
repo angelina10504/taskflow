@@ -1,0 +1,207 @@
+# Gates the LLM features on backend/evals. Evals cost real tokens and are
+# non-deterministic, so the trigger matrix is deliberately asymmetric:
+#
+#   pull_request  → ~10 pinned regression cases (~9k tokens) when AI code changes
+#   schedule      → all 71 cases nightly (~63k tokens)
+#   workflow_dispatch → whatever you ask for
+#
+# Groq's free tier is ~100k tokens/day per model and is SHARED with the running
+# app. One full run is ~63k, so the nightly must stay at one run/day and the PR
+# job must stay small. EVAL_API_KEY is a separate key from the production one so
+# eval runs never eat production's budget.
+name: AI evals
+
+on:
+  pull_request:
+    paths:
+      - 'backend/controllers/aiController.js'
+      - 'backend/utils/aiClient.js'
+      - 'backend/utils/aiLog.js'
+      - 'backend/utils/riskRadar.js'
+      - 'backend/evals/**'
+      - '.github/workflows/ai-evals.yml'
+  schedule:
+    # 02:17 UTC — off the hour so it doesn't pile onto the top-of-hour rush,
+    # and early enough that a failure is waiting when you start the day.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Suite to run'
+        type: choice
+        default: all
+        options: [all, quick-add, extract-tasks, decompose, today]
+      threshold:
+        description: 'Fail below this overall pass rate'
+        default: '0.90'
+      limit:
+        description: 'First N cases per suite (0 = all)'
+        default: '0'
+
+# Token budget protection: a second push to the same PR cancels the first run
+# mid-flight rather than paying for both.
+concurrency:
+  group: ai-evals-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    name: ${{ github.event_name == 'pull_request' && 'smoke' || 'full suite' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Forked PRs get no secrets. That is a skip, not a failure — reporting it
+      # as a config error would train everyone to ignore a red X.
+      - name: Check for eval key
+        id: key
+        env:
+          EVAL_API_KEY: ${{ secrets.EVAL_API_KEY }}
+        run: |
+          if [ -z "$EVAL_API_KEY" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=AI evals skipped::EVAL_API_KEY is not available (fork PR, or the secret is unset). No eval ran, so nothing was gated."
+            { echo "### AI evals — SKIPPED"; echo; echo "\`EVAL_API_KEY\` was not available to this run. Nothing was gated."; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.key.outputs.present == 'true'
+        run: npm ci
+
+      # The smoke set is pinned by id, not by --limit: --limit takes the first N
+      # in dataset order, which for quick-add is six title-cleanup cases and none
+      # of the bugs the prompts were fixed for. These ten are the regression
+      # canaries — the two prompt-injection attacks, both trap cases, the
+      # self-assignment bias case, the weekday-is-tomorrow case, a structural
+      # decompose case, and the injected task title in the Today planner.
+      - name: Resolve run mode
+        if: steps.key.outputs.present == 'true'
+        id: mode
+        env:
+          IN_SUITE: ${{ inputs.suite }}
+          IN_THRESHOLD: ${{ inputs.threshold }}
+          IN_LIMIT: ${{ inputs.limit }}
+        run: |
+          SMOKE_IDS='qa-date-02,qa-date-05,qa-asgn-04,qa-status-01,qa-trap-01,qa-trap-02,ex-06-injection-override,ex-07-injection-format,dc-01-stripe,td-02-injection-in-title-ignored'
+          case "${{ github.event_name }}" in
+            pull_request)
+              # 0.80 over ~10 cases tolerates two flakes; tighter is a coin flip
+              # on a sample this small.
+              echo "args=--only $SMOKE_IDS --threshold 0.80 --out results/ci-smoke.json" >> "$GITHUB_OUTPUT"
+              echo "label=smoke subset (10 pinned regression cases)" >> "$GITHUB_OUTPUT"
+              ;;
+            workflow_dispatch)
+              # Free-text dispatch inputs end up on a command line — constrain them
+              # to numbers before they get there. (suite is a choice, so it is safe.)
+              if ! printf '%s' "$IN_THRESHOLD" | grep -Eq '^(0(\.[0-9]+)?|1(\.0+)?)$'; then
+                echo "::error title=Bad input::threshold must be a number between 0 and 1 (got '$IN_THRESHOLD')."
+                exit 1
+              fi
+              if ! printf '%s' "$IN_LIMIT" | grep -Eq '^[0-9]+$'; then
+                echo "::error title=Bad input::limit must be a non-negative integer (got '$IN_LIMIT')."
+                exit 1
+              fi
+              ARGS="--suite $IN_SUITE --threshold $IN_THRESHOLD --out results/ci-dispatch.json"
+              if [ "$IN_LIMIT" != "0" ]; then ARGS="$ARGS --limit $IN_LIMIT"; fi
+              echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+              echo "label=manual: suite=$IN_SUITE threshold=$IN_THRESHOLD" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # Best recorded state is ~66/71 (93%). 0.90 requires 64/71, leaving
+              # two cases of slack for free-tier flake without going red; below
+              # 0.80 would mean regressing past the pre-prompt-fix baseline.
+              echo "args=--threshold 0.90 --out results/ci-nightly.json" >> "$GITHUB_OUTPUT"
+              echo "label=full suite (71 cases, all four suites)" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      # run.js maps EVAL_API_KEY onto AI_API_KEY itself, so the production key is
+      # never referenced here. Exit code is captured, not thrown, so the next step
+      # can tell a quality regression from a quota abort.
+      - name: Run evals
+        if: steps.key.outputs.present == 'true'
+        id: run
+        env:
+          EVAL_API_KEY: ${{ secrets.EVAL_API_KEY }}
+          AI_MODEL: ${{ vars.EVAL_AI_MODEL || 'llama-3.3-70b-versatile' }}
+          # Inert until per-feature routing lands (Task 2). Set the repo variable
+          # EVAL_AI_MODEL_CHEAP to make CI exercise the same routing production uses.
+          AI_MODEL_CHEAP: ${{ vars.EVAL_AI_MODEL_CHEAP }}
+        run: |
+          set +e
+          node evals/run.js ${{ steps.mode.outputs.args }} 2>&1 | tee eval-output.txt
+          CODE=${PIPESTATUS[0]}
+          set -e
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Eval harness exited with $CODE"
+
+      - name: Upload eval report
+        if: always() && steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.run_id }}
+          path: |
+            backend/evals/results/ci-*.json
+            backend/eval-output.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Exit codes are the whole point of the gate:
+      #   0 pass · 1 below threshold · 2 config error · 3 daily quota exhausted.
+      # 3 is infrastructure, not quality — it goes green-with-warning, because a
+      # red X that means "Groq ran out" teaches you to ignore red X's. The cost of
+      # that choice is that a quota-aborted run gated nothing while looking green,
+      # so the warning and the INCONCLUSIVE summary have to be loud.
+      - name: Interpret result
+        if: steps.key.outputs.present == 'true'
+        env:
+          CODE: ${{ steps.run.outputs.code }}
+          LABEL: ${{ steps.mode.outputs.label }}
+        run: |
+          TAIL=$(tail -n 12 eval-output.txt || true)
+          {
+            echo "### AI evals — $LABEL"
+            echo
+            echo '```'
+            echo "$TAIL"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          case "$CODE" in
+            0)
+              echo "**Result: PASS** — pass rate met the threshold." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            1)
+              echo "**Result: QUALITY REGRESSION** — pass rate fell below the threshold. Check the per-case failures in the log above; the uploaded report JSON has the full detail." >> "$GITHUB_STEP_SUMMARY"
+              echo "::error title=Eval quality regression::Pass rate below threshold (exit 1)."
+              exit 1
+              ;;
+            2)
+              echo "**Result: CONFIG ERROR** — the harness could not run (missing key, unknown suite, unknown --only case id, or a crash). This says nothing about model quality." >> "$GITHUB_STEP_SUMMARY"
+              echo "::error title=Eval config error::Harness failed to run (exit 2). Not a quality signal."
+              exit 1
+              ;;
+            3)
+              echo "**Result: INCONCLUSIVE — daily token quota exhausted.** The run aborted partway, so these results are partial and **nothing was gated**. This is not a quality regression. Re-run after the Groq daily budget resets." >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning title=Evals inconclusive (quota)::Daily token quota exhausted (exit 3). Partial results; no quality signal. Re-run after reset."
+              ;;
+            *)
+              echo "**Result: UNEXPECTED EXIT $CODE**" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error title=Unexpected eval exit::Harness exited $CODE."
+              exit 1
+              ;;
+          esac

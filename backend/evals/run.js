@@ -4,6 +4,8 @@
 //   node evals/run.js                         # run every suite
 //   node evals/run.js --suite quick-add       # one suite (quick-add | extract-tasks | decompose)
 //   node evals/run.js --limit 5               # first N cases of each suite (smoke test)
+//   node evals/run.js --only qa-trap-01,ex-06-injection-override
+//                                             # exactly these case ids (CI smoke subset)
 //   node evals/run.js --concurrency 2         # parallel requests (default 2 — Groq free tier)
 //   node evals/run.js --threshold 0.8         # exit 1 if overall pass rate falls below this
 //
@@ -76,6 +78,16 @@ const arg = (name, fallback) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pct = (n, d) => (d ? `${((n / d) * 100).toFixed(1)}%` : 'n/a');
 
+// --limit takes the FIRST N cases, which follow dataset order (all of quick-add's
+// title cases before any trap). That is fine for a cheap sanity run but useless as
+// a regression gate, so --only pins an explicit id set: CI names the cases that
+// encode fixed bugs (injections, traps, the weekday/self-assignment regressions).
+// Both may be combined — --only filters, then --limit truncates what survives.
+const selectCases = (suite, { only, limit }) => {
+  const picked = only.size ? suite.cases.filter((c) => only.has(c.id)) : suite.cases;
+  return limit ? picked.slice(0, limit) : picked;
+};
+
 const runCase = async (ai, suite, c) => {
   const t0 = Date.now();
   const base = { id: c.id, category: c.category || null };
@@ -118,8 +130,7 @@ const runCase = async (ai, suite, c) => {
   }
 };
 
-const runSuite = async (ai, name, suite, { limit, concurrency }) => {
-  const cases = limit ? suite.cases.slice(0, limit) : suite.cases;
+const runSuite = async (ai, name, suite, cases, { concurrency }) => {
   console.log(`\n── ${name} ─ ${cases.length} cases ${'─'.repeat(Math.max(1, 40 - name.length))}`);
   const results = [];
   let next = 0;
@@ -204,18 +215,43 @@ const main = async () => {
     process.exit(2);
   }
 
+  const only = new Set(
+    arg('only', '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  // A typo in a CI --only list must be a loud config error (exit 2), never a
+  // silently smaller run that passes its threshold and reports a false green.
+  if (only.size) {
+    const known = new Set(names.flatMap((n) => SUITES[n].cases.map((c) => c.id)));
+    const missing = [...only].filter((id) => !known.has(id));
+    if (missing.length) {
+      console.error(`Unknown case id(s) for --only: ${missing.join(', ')}`);
+      process.exit(2);
+    }
+  }
+
+  const plan = names
+    .map((n) => ({ name: n, suite: SUITES[n], cases: selectCases(SUITES[n], { only, limit }) }))
+    .filter((p) => p.cases.length);
+  if (!plan.length) {
+    console.error('No cases selected — check --suite / --only / --limit.');
+    process.exit(2);
+  }
+
   console.log(`TaskFlow AI evals · model: ${MODEL} · clock pinned to 2026-07-01 (Wed)`);
   const started = Date.now();
   const bySuite = {};
   let aborted = false;
-  for (let s = 0; s < names.length; s++) {
-    const out = await runSuite(ai, names[s], SUITES[names[s]], { limit, concurrency });
-    bySuite[names[s]] = out.results;
+  for (let s = 0; s < plan.length; s++) {
+    const out = await runSuite(ai, plan[s].name, plan[s].suite, plan[s].cases, { concurrency });
+    bySuite[plan[s].name] = out.results;
     if (out.aborted) {
       aborted = true;
       break;
     }
-    if (s < names.length - 1) {
+    if (s < plan.length - 1) {
       console.log(' (15s cooldown so the next suite starts with a fresh rate-limit window…)');
       await sleep(15000);
     }

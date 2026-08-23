@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Today from './pages/Today';
+import Ops from './pages/Ops';
 import Workspaces from './pages/Workspaces';
 import WorkspaceDetail from './pages/WorkspaceDetail';
 import ProjectDetail from './pages/ProjectDetail';
@@ -39,6 +40,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Today />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ops"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Ops />
                 </Layout>
               </ProtectedRoute>
             }

@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { isPast, isToday } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
-import { LuKanban, LuHouse, LuFolders, LuLogOut, LuSearch, LuSunrise } from 'react-icons/lu';
+import { LuKanban, LuHouse, LuFolders, LuLogOut, LuSearch, LuSunrise, LuActivity } from 'react-icons/lu';
 import * as taskService from '../../services/taskService';
 import GlobalSearchPalette from '../ai/GlobalSearchPalette';
 
@@ -45,7 +45,7 @@ const Layout = ({ children }) => {
   // Route-aware tab title — small thing, but "Today · TaskFlow" beats a
   // static tab in a wall of browser tabs.
   useEffect(() => {
-    const NAMES = { '/today': 'Today', '/dashboard': 'Dashboard', '/workspaces': 'Workspaces', '/profile': 'Profile' };
+    const NAMES = { '/today': 'Today', '/dashboard': 'Dashboard', '/workspaces': 'Workspaces', '/profile': 'Profile', '/ops': 'AI Ops' };
     const label =
       NAMES[location.pathname] ||
       (location.pathname.startsWith('/projects/') ? 'Board' : location.pathname.startsWith('/workspaces/') ? 'Workspace' : null);
@@ -293,6 +293,41 @@ const Layout = ({ children }) => {
                 })}
             </>
           )}
+
+          {/* System — observability for the AI features */}
+          <Text
+            fontSize="10px"
+            fontWeight="700"
+            letterSpacing="0.12em"
+            textTransform="uppercase"
+            color={dark ? 'gray.600' : 'gray.400'}
+            px={3}
+            pt={4}
+            pb={1}
+          >
+            System
+          </Text>
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={3}
+            px={3}
+            py={1.5}
+            borderRadius="md"
+            cursor="pointer"
+            bg={location.pathname === '/ops' ? (dark ? '#3a1526' : 'brand.50') : 'transparent'}
+            color={location.pathname === '/ops' ? 'brand.500' : textSecondary}
+            fontWeight={location.pathname === '/ops' ? 'semibold' : 'normal'}
+            transition="all 0.15s"
+            _hover={{
+              bg: location.pathname === '/ops' ? (dark ? '#3a1526' : 'brand.50') : hoverBg,
+              color: location.pathname === '/ops' ? 'brand.500' : textPrimary,
+            }}
+            onClick={() => navigate('/ops')}
+          >
+            <LuActivity size={15} />
+            <Text fontSize="sm" flex="1">AI Ops</Text>
+          </Box>
         </VStack>
 
         {/* User Section */}

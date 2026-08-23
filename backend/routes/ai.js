@@ -13,6 +13,7 @@ const {
   askBoard,
   globalSearch,
   getTodayPlan,
+  getAiOps,
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
@@ -25,6 +26,9 @@ router.get('/search', globalSearch);
 
 // Today's plan — deterministic features, LLM selection, cached per day
 router.get('/today', getTodayPlan);
+
+// Observability: token spend vs budget, latency, fallback rates (content-free)
+router.get('/ops', getAiOps);
 
 router.get('/projects/:projectId/velocity', getVelocityInsights);
 router.post('/projects/:projectId/command', commandBoard);

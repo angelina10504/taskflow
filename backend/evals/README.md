@@ -9,6 +9,8 @@ cd backend
 npm run eval                                  # all suites
 node evals/run.js --suite quick-add           # one suite
 node evals/run.js --limit 5                   # smoke test (first 5 cases per suite)
+node evals/run.js --only qa-trap-01,ex-06-injection-override
+                                              # exactly these case ids
 node evals/run.js --threshold 0.8             # exit 1 below 80% — CI-friendly
 AI_MODEL=llama-3.1-8b-instant \
   node evals/run.js --out results/8b.json     # qualify a different model
@@ -20,6 +22,39 @@ limits (a full run is ~60k tokens; Groq's free tier allows 100k/day per model).
 Results are printed per-case and written to `evals/results/latest.json`
 (override with `--out`). Exit codes: `0` pass · `1` below threshold ·
 `2` config error · `3` aborted on daily-quota exhaustion (partial results).
+
+## CI gating
+
+`.github/workflows/ai-evals.yml` runs this harness. The trigger matrix is shaped
+by the token budget, not by convenience:
+
+| Trigger | What runs | Threshold | ~Tokens |
+|---|---|---|---|
+| PR touching `aiController.js`, `aiClient.js`, `aiLog.js`, `riskRadar.js`, or `evals/**` | 10 pinned cases via `--only` | 0.80 | ~9k |
+| Nightly (02:17 UTC) | all 71 cases | 0.90 | ~63k |
+| `workflow_dispatch` | your choice of suite/threshold/limit | input | varies |
+
+The PR set is pinned **by case id, not by `--limit`** — `--limit` takes the first
+N in dataset order, which for `quick-add` is six title-cleanup cases and none of
+the bugs the prompts were fixed for. The ten pinned cases are the regression
+canaries: both prompt-injection attacks (`ex-06`, `ex-07`), both trap cases, the
+self-assignment-bias case (`qa-date-02`), the weekday-is-tomorrow case
+(`qa-date-05`), a structural `decompose` case, and the injected task title in the
+Today planner (`td-02`).
+
+The workflow reads `EVAL_API_KEY` from repo secrets — a **separate key from
+production**, so a CI run can never eat the app's daily budget. Forked PRs get no
+secret; the job says so and skips rather than failing.
+
+Exit codes are surfaced distinctly. `1` (below threshold) and `2` (config error)
+fail the job with different messages; **`3` (daily quota exhausted) is a green
+job with a loud `INCONCLUSIVE` warning** — a quota abort is infrastructure, not a
+quality regression, and a red X meaning "Groq ran out" trains people to ignore
+red X's. The tradeoff: a quota-aborted run gated nothing while looking green.
+
+One limitation worth knowing: exit 3 only fires on a per-*day* limit. A per-minute
+429 that survives the runner's retry pass counts as an ordinary case failure and
+lands in exit 1 — that is what produced the footnote on the table below.
 
 ## What is tested
 
