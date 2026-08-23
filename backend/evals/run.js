@@ -22,18 +22,14 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 if (process.env.EVAL_API_KEY) process.env.AI_API_KEY = process.env.EVAL_API_KEY;
 
 const fs = require('fs');
-const { getClient, MODEL } = require('../utils/aiClient');
+const { getClient, getModel } = require('../utils/aiClient');
 const { __evalInternals } = require('../controllers/aiController');
 const { QUICK_ADD_SYSTEM, EXTRACT_SYSTEM, DECOMPOSE_SYSTEM, TODAY_SYSTEM, buildCalendar } = __evalInternals;
 const { PINNED_NOW, CURRENT_USER, MEMBERS } = require('./roster');
 const { scoreQuickAdd, scoreExtract, scoreDecompose, scoreToday } = require('./score');
 
-// Approximate Groq pricing, USD per 1M tokens (input, output).
-const PRICES = {
-  'llama-3.3-70b-versatile': [0.59, 0.79],
-  'llama-3.1-8b-instant': [0.05, 0.08],
-};
-const [PRICE_IN, PRICE_OUT] = PRICES[MODEL] || PRICES['llama-3.3-70b-versatile'];
+// Prices come from config/aiModels.js — the same table /ops bills against.
+const { ratesFor, validateModelConfig } = require('../config/aiModels');
 
 const CALENDAR = buildCalendar(10, PINNED_NOW);
 
@@ -41,6 +37,7 @@ const CALENDAR = buildCalendar(10, PINNED_NOW);
 // same max_tokens, same "slice from { to }" JSON recovery.
 const SUITES = {
   'quick-add': {
+    feature: 'quick_add',
     cases: require('./datasets/quick-add.cases'),
     system: QUICK_ADD_SYSTEM,
     maxTokens: 300,
@@ -48,6 +45,7 @@ const SUITES = {
     score: (c, json) => scoreQuickAdd(c, json),
   },
   'extract-tasks': {
+    feature: 'extract',
     cases: require('./datasets/extract-tasks.cases'),
     system: EXTRACT_SYSTEM,
     maxTokens: 1500,
@@ -55,6 +53,7 @@ const SUITES = {
     score: (c, json) => scoreExtract(c, Array.isArray(json.items) ? json.items : []),
   },
   decompose: {
+    feature: 'decompose',
     cases: require('./datasets/decompose.cases'),
     system: DECOMPOSE_SYSTEM,
     maxTokens: 1800,
@@ -62,6 +61,7 @@ const SUITES = {
     score: (c, json) => scoreDecompose(c, Array.isArray(json.items) ? json.items : []),
   },
   today: {
+    feature: 'today',
     cases: require('./datasets/today.cases'),
     system: TODAY_SYSTEM,
     maxTokens: 900,
@@ -94,7 +94,7 @@ const runCase = async (ai, suite, c) => {
   try {
     const completion = await ai.chat.completions.create(
       {
-        model: MODEL,
+        model: getModel(suite.feature),
         max_tokens: suite.maxTokens,
         response_format: { type: 'json_object' },
         messages: [
@@ -198,6 +198,14 @@ const runSuite = async (ai, name, suite, cases, { concurrency }) => {
 };
 
 const main = async () => {
+  // Catch a dead or misspelled model before spending a single token on it.
+  try {
+    validateModelConfig();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(2);
+  }
+
   const ai = getClient();
   if (!ai) {
     console.error('No AI key configured — set AI_API_KEY in backend/.env before running evals.');
@@ -240,7 +248,18 @@ const main = async () => {
     process.exit(2);
   }
 
-  console.log(`TaskFlow AI evals · model: ${MODEL} · clock pinned to 2026-07-01 (Wed)`);
+  // Print the model per suite, not one global name — with routing enabled the
+  // run may span two models, and a report that hides that proves nothing.
+  const modelOf = (name) => getModel(SUITES[name].feature);
+  const uniqModels = [...new Set(plan.map((p) => modelOf(p.name)))];
+  const modelLine =
+    uniqModels.length === 1 ? uniqModels[0] : plan.map((p) => `${p.name}→${modelOf(p.name)}`).join(' · ');
+  console.log(`TaskFlow AI evals · model: ${modelLine} · clock pinned to 2026-07-01 (Wed)`);
+  uniqModels
+    .filter((m) => ratesFor(m).unknown)
+    .forEach((m) =>
+      console.log(` ⚠ no price entry for "${m}" in config/aiModels.js — cost estimate uses ${ratesFor(m).id} rates`)
+    );
   const started = Date.now();
   const bySuite = {};
   let aborted = false;
@@ -262,7 +281,14 @@ const main = async () => {
   const latencies = all.map((r) => r.latencyMs).sort((a, b) => a - b);
   const tokIn = all.reduce((s, r) => s + (r.usage.prompt || 0), 0);
   const tokOut = all.reduce((s, r) => s + (r.usage.completion || 0), 0);
-  const cost = (tokIn * PRICE_IN + tokOut * PRICE_OUT) / 1e6;
+  // Once routing is on, suites can run on different models, so cost is summed
+  // per suite at that suite's own rate rather than one blended number.
+  const cost = Object.entries(bySuite).reduce((sum, [n, rs]) => {
+    const rate = ratesFor(getModel(SUITES[n].feature));
+    const i = rs.reduce((a, r) => a + (r.usage.prompt || 0), 0);
+    const o = rs.reduce((a, r) => a + (r.usage.completion || 0), 0);
+    return sum + (i * rate.inPerM + o * rate.outPerM) / 1e6;
+  }, 0);
 
   console.log(`\n${'═'.repeat(56)}`);
   console.log(` OVERALL: ${passed}/${all.length} passed (${pct(passed, all.length)}) in ${((Date.now() - started) / 1000).toFixed(0)}s`);
@@ -271,7 +297,8 @@ const main = async () => {
 
   const report = {
     ranAt: new Date().toISOString(),
-    model: MODEL,
+    model: uniqModels.length === 1 ? uniqModels[0] : null,
+    models: Object.fromEntries(plan.map((p) => [p.name, modelOf(p.name)])),
     pinnedClock: '2026-07-01T12:00:00Z',
     aborted,
     overall: { passed, total: all.length, passRate: all.length ? passed / all.length : 0 },
@@ -280,7 +307,7 @@ const main = async () => {
     suites: Object.fromEntries(
       Object.entries(bySuite).map(([n, rs]) => [
         n,
-        { passed: rs.filter((r) => r.pass).length, total: rs.length, cases: rs },
+        { model: modelOf(n), passed: rs.filter((r) => r.pass).length, total: rs.length, cases: rs },
       ])
     ),
   };
