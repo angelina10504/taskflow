@@ -609,7 +609,14 @@ const quickAddTask = async (req, res) => {
           ai,
           {
             model: getModel('quick_add'),
-            max_tokens: 300,
+            // 900, not 300. The default model is a reasoning model: it spends
+            // completion tokens on analysis before emitting the JSON, so 300 —
+            // sized when llama-3.3-70b topped out at 64 — truncated every
+            // non-trivial input mid-object, and the provider rejected the whole
+            // response with a 400 rather than returning partial JSON. Quick Add
+            // then silently served the raw-text fallback below. Keep in sync
+            // with the quick-add suite in evals/run.js.
+            max_tokens: 900,
             response_format: { type: 'json_object' },
             messages: [
               { role: 'system', content: QUICK_ADD_SYSTEM },
