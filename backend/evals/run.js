@@ -40,7 +40,9 @@ const SUITES = {
     feature: 'quick_add',
     cases: require('./datasets/quick-add.cases'),
     system: QUICK_ADD_SYSTEM,
-    maxTokens: 300,
+    // Mirrors the controller — see the max_tokens note in aiController's
+    // quick_add call before changing either one.
+    maxTokens: 900,
     payload: (c) => ({ text: c.text, calendar: CALENDAR, current_user: CURRENT_USER, members: MEMBERS }),
     score: (c, json) => scoreQuickAdd(c, json),
   },
