@@ -24,6 +24,10 @@ console.log('📍 MongoDB URI exists:', !!process.env.MONGO_URI);
 // carries the reason. A typo in one env var must not take the whole API down.
 const { validateModelConfig } = require('./config/aiModels');
 const { aiStatus } = require('./utils/aiClient');
+const { verifyAccessToken } = require('./utils/generateToken');
+const { checkWorkspaceMembership } = require('./utils/workspaceAccess');
+const User = require('./models/User');
+const Project = require('./models/Project');
 const modelConfig = validateModelConfig();
 if (modelConfig.problems.length) {
   console.warn('⚠️  AI model configuration:');
@@ -219,16 +223,62 @@ const broadcastOnlineUsers = (projectId) => {
 };
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('👤 User connected:', socket.id);
+// Handshake authentication.
+//
+// Until this existed, any client that could reach the server could connect and
+// join any room given only a project id — a 24-hex ObjectId that appears in
+// board URLs, so any ex-member or anyone who had seen a link had one. That
+// delivered task-moved payloads (full task objects) and health-report
+// broadcasts to unauthenticated listeners, let presence be spoofed as any
+// user, and let forged board activity render on every client in the room.
+//
+// Identity comes from the verified token and nothing else. A connection with
+// no token, an expired token, or a token for a deleted user is refused here
+// rather than being allowed in and checked later.
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth?.token;
+  const decoded = token ? verifyAccessToken(token) : null;
+  if (!decoded?.id) return next(new Error('unauthorized'));
 
-  socket.on('join-project', ({ projectId, user }) => {
-    socket.join(projectId);
-    socket.data.projectId = projectId;
-    socket.data.user = user;
-    if (!projectRooms.has(projectId)) projectRooms.set(projectId, new Map());
-    projectRooms.get(projectId).set(socket.id, user);
-    broadcastOnlineUsers(projectId);
+  const user = await User.findById(decoded.id).select('name avatar');
+  if (!user) return next(new Error('unauthorized'));
+
+  // The ONLY source of identity for this socket from here on. Nothing the
+  // client sends in a payload is allowed to override it.
+  socket.data.userId = user._id.toString();
+  socket.data.presence = { id: user._id.toString(), name: user.name, avatar: user.avatar || null };
+  next();
+});
+
+io.on('connection', (socket) => {
+  console.log('👤 User connected:', socket.id, 'as', socket.data.userId);
+
+  // Joining a room is an authorization decision, not a subscription.
+  //
+  // Membership is re-checked on every join rather than cached at connect, so a
+  // member removed from the workspace loses realtime access on their next join
+  // instead of keeping it until they happen to disconnect.
+  socket.on('join-project', async ({ projectId }) => {
+    try {
+      const project = await Project.findById(projectId);
+      if (!project) return;
+
+      const { isMember } = await checkWorkspaceMembership(project.workspace, socket.data.userId);
+      if (!isMember) {
+        console.warn(`[socket] refused join: user ${socket.data.userId} -> project ${projectId}`);
+        return;
+      }
+
+      socket.join(projectId);
+      socket.data.projectId = projectId;
+      // Presence is derived server-side from the authenticated user; the client
+      // no longer sends a name or avatar, so it cannot appear as someone else.
+      if (!projectRooms.has(projectId)) projectRooms.set(projectId, new Map());
+      projectRooms.get(projectId).set(socket.id, socket.data.presence);
+      broadcastOnlineUsers(projectId);
+    } catch (err) {
+      console.error('[socket] join-project failed:', err.message);
+    }
   });
 
   socket.on('leave-project', ({ projectId }) => {
@@ -240,8 +290,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Relay task moves to everyone else in the room
+  // Relay task moves to everyone else in the room.
+  //
+  // Presentation only — every durable write goes through the REST API, which is
+  // protected. But the relay is now restricted to the room this socket actually
+  // joined (and therefore passed the membership check for), so a client cannot
+  // broadcast into an arbitrary project by naming its id.
   socket.on('task-moved', ({ projectId, task, movedBy }) => {
+    if (projectId !== socket.data.projectId) return;
     socket.to(projectId).emit('task-moved', { task, movedBy });
   });
 

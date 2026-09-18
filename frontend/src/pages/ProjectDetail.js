@@ -86,10 +86,9 @@ const ProjectDetail = () => {
 
   useEffect(() => {
     if (!user) return;
-    socket.emit('join-project', {
-      projectId: id,
-      user: { id: user.id, name: user.name, avatar: user.avatar || null },
-    });
+    // No user object: the server derives presence identity from the verified
+    // token, so sending one here would be ignored — and used to be spoofable.
+    socket.emit('join-project', { projectId: id });
     socket.on('online-users', setOnlineUsers);
     return () => {
       socket.emit('leave-project', { projectId: id });
