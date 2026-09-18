@@ -89,9 +89,58 @@ app.get('/', (req, res) => {
   });
 });
 
+// Rate limiting.
+//
+// Two limiters because the threats are different shapes.
+//
+// Auth is credential stuffing: low volume, slow, targeted at one account.
+// Keyed by IP because an attacker has no session yet. skipSuccessfulRequests
+// means a legitimate user typing one wrong password is not pushed toward the
+// ceiling by their subsequent successful login.
+//
+// The AI routes are a SPEND channel, not just a compute one — the provider
+// budget is ~100k tokens/day, shared org-wide with the eval harness, so an
+// uncapped endpoint lets one caller exhaust the day for every user and for CI.
+// Keyed by user id, falling back to IP before `protect` has run: keying purely
+// by IP would let one account behind a shared NAT lock out colleagues, and
+// keying purely by user would leave unauthenticated traffic uncounted.
+//
+// Tradeoff: the default store is in-memory, so counters reset on deploy and are
+// per-instance. That is honest for a single Render instance; a second instance
+// or a Redis store is required before this is a real global limit.
+// ipKeyGenerator is the library's IPv6-safe key helper — a bare req.ip would
+// let one IPv6 client rotate through a /64 and bypass the limit entirely.
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts. Try again in a few minutes.' },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  // ipKeyGenerator takes the IP STRING, not the request — passing `req` yields
+  // a fresh object key per request, so the limit silently never triggers.
+  keyGenerator: (req) => (req.user?.id ? `u:${req.user.id}` : ipKeyGenerator(req.ip)),
+  message: {
+    success: false,
+    message: 'Too many AI requests. These calls share a daily token budget — try again shortly.',
+  },
+});
+
 // API Routes with error handling
 try {
   console.log('📂 Loading routes...');
+  // Only the credential-checking routes, not the whole namespace —
+  // /me and /refresh-token are called routinely by a logged-in client.
+  app.use(['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password'], authLimiter);
   app.use('/api/auth', require('./routes/auth'));
   console.log('✅ Auth routes loaded');
   app.use('/api/workspaces', require('./routes/workspaces'));
@@ -100,7 +149,7 @@ try {
   console.log('✅ Project routes loaded');
   app.use('/api/tasks', require('./routes/tasks'));
   console.log('✅ Task routes loaded');
-  app.use('/api/ai', require('./routes/ai'));
+  app.use('/api/ai', aiLimiter, require('./routes/ai'));
   console.log('✅ AI routes loaded');
 } catch (error) {
   console.error('❌ Error loading routes:', error);
