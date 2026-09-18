@@ -23,6 +23,18 @@ const checkWorkspaceMembership = async (workspaceId, userId) => {
 // Owners/admins may assign anyone; members only themselves (mirrors taskController).
 const canAssignOthers = (role) => role === 'owner' || role === 'admin';
 
+// Why an AI feature is degraded, in one sentence, for the response body.
+// aiStatus() already distinguishes a missing key from an unusable model config
+// and phrases each — so no handler has to guess. They used to: a hardcoded
+// "set AI_API_KEY (Gemini)" here outlived the provider it named by two model
+// migrations and sent a debugging session after a key that does not exist.
+const unavailableReason = (feature) => {
+  const { detail } = aiStatus();
+  return `${feature} is unavailable. ${
+    detail || 'The AI layer is not configured — check AI_API_KEY and AI_MODEL in the backend .env.'
+  }`;
+};
+
 const SYSTEM_PROMPT = `You are the velocity analyst for TaskFlow, a project management app.
 You are given pre-computed, deterministic metrics for a single project's task board.
 Your job is to interpret those numbers for a busy project lead — NOT to recompute them.
@@ -385,7 +397,7 @@ const commandBoard = async (req, res) => {
       return res.status(200).json({
         success: true,
         aiAvailable: false,
-        reply: 'Command mode needs an AI API key. Set AI_API_KEY (Gemini) in the backend .env to enable it.',
+        reply: unavailableReason('Command mode'),
         actions: [],
         tasks,
       });
@@ -750,7 +762,7 @@ const extractTasksFromNotes = async (req, res) => {
         success: true,
         aiAvailable: false,
         items: [],
-        message: 'Extracting tasks from notes needs an AI API key. Set AI_API_KEY in the backend .env to enable it.',
+        message: unavailableReason('Extracting tasks from notes'),
       });
     }
 
@@ -870,7 +882,7 @@ const decomposeProject = async (req, res) => {
         success: true,
         aiAvailable: false,
         items: [],
-        message: 'Planning needs an AI API key. Set AI_API_KEY in the backend .env to enable it.',
+        message: unavailableReason('Planning'),
       });
     }
 
