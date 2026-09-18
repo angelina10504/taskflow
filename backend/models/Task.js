@@ -89,6 +89,23 @@ const taskSchema = new mongoose.Schema(
 // Index for faster queries
 taskSchema.index({ project: 1, status: 1, position: 1 });
 
+// The workspace field is denormalized onto Task (see the field definition above)
+// precisely so tenant-scoped reads never join through Project — but that only
+// pays off with an index behind it. Without these, every cross-workspace query
+// COLLSCANs the whole tasks collection:
+//
+//   globalSearch      Task.find({ workspace: { $in: [...memberships] } })
+//   semantic fallback Task.find({ ...scope, embedding: { $exists: true } })
+//
+// Compound order is equality → sort/range (ESR): `workspace` is always an exact
+// match or $in, `status` filters, `dueDate` is what overdue/upcoming queries
+// range and sort on.
+taskSchema.index({ workspace: 1, status: 1, dueDate: 1 });
+
+// The Today planner and every "my work" view filter by assignee inside a tenant.
+// assignedTo is an array, so this is a multikey index — one entry per assignee.
+taskSchema.index({ workspace: 1, assignedTo: 1, status: 1 });
+
 // Auto-set completedAt when status changes to done
 taskSchema.pre('save', function () {
   if (this.isModified('status')) {

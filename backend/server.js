@@ -107,6 +107,36 @@ try {
   process.exit(1);
 }
 
+// Unmatched API routes return JSON, not Express's HTML error page — a frontend
+// that does res.json() on a 404 should get a parseable body, not a SyntaxError
+// that hides the real status.
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, message: `No route for ${req.method} ${req.originalUrl}` });
+});
+
+// Last-resort error handler.
+//
+// Every controller already try/catches, so this exists for what they cannot
+// catch: a synchronous throw in middleware, a malformed JSON body rejected by
+// express.json(), a bug in a route handler outside its try block. Without it
+// Express replies with an HTML stack trace — which leaks file paths in
+// production and breaks any client expecting JSON.
+//
+// The four-argument signature is what registers this as an error handler; the
+// unused `next` cannot be removed.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  // A body-parser failure is the client's fault, not ours — report it as 400.
+  const status = err.status || err.statusCode || (err.type === 'entity.parse.failed' ? 400 : 500);
+  if (status >= 500) console.error('Unhandled error:', err);
+  res.status(status).json({
+    success: false,
+    message: status >= 500 ? 'Server error' : err.message || 'Bad request',
+    // Same rule as the controllers: internals are for logs, never for clients.
+    error: process.env.NODE_ENV === 'production' ? undefined : err.message,
+  });
+});
+
 // Create HTTP server
 const httpServer = createServer(app);
 

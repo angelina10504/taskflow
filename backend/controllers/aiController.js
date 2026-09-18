@@ -3,6 +3,7 @@ const Project = require('../models/Project');
 const Workspace = require('../models/Workspace');
 const HealthReport = require('../models/HealthReport');
 const DailyPlan = require('../models/DailyPlan');
+const AgentAction = require('../models/AgentAction');
 const { computeVelocityStats } = require('../utils/velocityStats');
 const { getClient, getModel, aiStatus } = require('../utils/aiClient');
 const { scanProject } = require('../utils/riskRadar');
@@ -176,7 +177,7 @@ const getVelocityInsights = async (req, res) => {
     res.status(200).json({ success: true, aiAvailable: true, stats, insights });
   } catch (error) {
     console.error('Velocity insights error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -259,16 +260,56 @@ const COMMAND_TOOLS = [
   },
 ];
 
+// Persist one row of the agent audit trail.
+//
+// Fire-and-forget, matching recordAiEvent: an audit write must never slow or
+// fail the request it describes. The tradeoff is explicit — if Mongo rejects
+// this write the mutation still happened with no record, so a lost row is
+// possible. For a stronger guarantee the write would have to join the same
+// transaction as the mutation, which would mean a user-visible failure when
+// only the audit leg fails. Availability of the feature wins here; the console
+// error is the escape hatch.
+const recordAgentAction = (row) => {
+  AgentAction.create(row).catch((err) =>
+    console.error('[agent-audit] write failed:', err.message)
+  );
+};
+
 // Execute a single tool call against the DB, scoped to this project.
 const executeCommandTool = async (name, input, ctx) => {
   const { projectId, workspaceId, userId, memberIds, actions, selfOnly } = ctx;
 
+  // Collects what validation refused, so the audit row can distinguish
+  // "the model did what was asked" from "the model asked for something we
+  // would not allow and we quietly dropped it".
+  const rejected = [];
   const validateAssignees = (ids) => {
     if (!Array.isArray(ids)) return [];
-    return ids.filter(
+    const kept = ids.filter(
       (id) => memberIds.has(String(id)) && (!selfOnly || String(id) === String(userId))
     );
+    for (const id of ids) {
+      if (!memberIds.has(String(id))) {
+        rejected.push(`assignee ${id} is not a workspace member`);
+      } else if (selfOnly && String(id) !== String(userId)) {
+        rejected.push(`assignee ${id} dropped — role may only self-assign`);
+      }
+    }
+    return kept;
   };
+
+  const audit = (fields) =>
+    recordAgentAction({
+      user: userId,
+      workspace: workspaceId,
+      project: projectId,
+      feature: 'command',
+      tool: name,
+      rejected,
+      prompt: ctx.prompt,
+      requested: input,
+      ...fields,
+    });
 
   if (name === 'create_task') {
     if (!input.title) return { error: 'title is required' };
@@ -286,6 +327,12 @@ const executeCommandTool = async (name, input, ctx) => {
       createdBy: userId,
     });
     actions.push(`Created task "${task.title}" in ${task.status}`);
+    audit({
+      outcome: 'applied',
+      task: task._id,
+      taskTitle: task.title,
+      changes: { created: { from: null, to: task.status } },
+    });
     if (task.assignedTo.length) {
       notifyAssignment({
         task,
@@ -300,6 +347,10 @@ const executeCommandTool = async (name, input, ctx) => {
 
   const task = await Task.findById(input.task_id);
   if (!task || task.project.toString() !== projectId.toString()) {
+    // The model named a task id outside this project. Recorded, not silent:
+    // a model reaching for ids it was never shown is the signal that matters.
+    rejected.push(`task ${input.task_id} is not in this project`);
+    audit({ outcome: 'refused' });
     return { error: 'Task not found in this project' };
   }
 
@@ -307,24 +358,37 @@ const executeCommandTool = async (name, input, ctx) => {
     const title = task.title;
     await task.deleteOne();
     actions.push(`Deleted task "${title}"`);
+    // After this row, the audit trail is the only surviving record of the task.
+    audit({ outcome: 'applied', task: input.task_id, taskTitle: title });
     return { ok: true, deleted_id: input.task_id };
   }
 
   if (name === 'update_task') {
     const changes = [];
+    // Field-level before/after for the audit row. The `changes` array above is
+    // prose for the user-facing "N changes applied" list; this is the machine
+    // record — what the value actually was, so a bad edit can be reconstructed.
+    const diff = {};
     let addedAssignees = [];
     if (input.status && STATUS_ENUM.includes(input.status) && input.status !== task.status) {
+      diff.status = { from: task.status, to: input.status };
       task.status = input.status;
       task.position = 0;
       changes.push(`status→${input.status}`);
+    } else if (input.status && !STATUS_ENUM.includes(input.status)) {
+      rejected.push(`status "${input.status}" is not a valid status`);
     }
     if (input.priority && PRIORITY_ENUM.includes(input.priority) && input.priority !== task.priority) {
+      diff.priority = { from: task.priority, to: input.priority };
       task.priority = input.priority;
       changes.push(`priority→${input.priority}`);
+    } else if (input.priority && !PRIORITY_ENUM.includes(input.priority)) {
+      rejected.push(`priority "${input.priority}" is not a valid priority`);
     }
     if (Array.isArray(input.assignee_ids)) {
       const prevAssignees = task.assignedTo.map(String);
       task.assignedTo = validateAssignees(input.assignee_ids);
+      diff.assignedTo = { from: prevAssignees, to: task.assignedTo.map(String) };
       addedAssignees = task.assignedTo.map(String).filter((id) => !prevAssignees.includes(id));
       changes.push('reassigned');
     }
@@ -333,6 +397,7 @@ const executeCommandTool = async (name, input, ctx) => {
       changes.push(input.due_date ? 'due date set' : 'due date cleared');
     }
     if (typeof input.title === 'string' && input.title.trim()) {
+      diff.title = { from: task.title, to: input.title.trim() };
       task.title = input.title.trim();
       changes.push('renamed');
     }
@@ -340,6 +405,12 @@ const executeCommandTool = async (name, input, ctx) => {
 
     await task.save();
     if (changes.length) actions.push(`Updated "${task.title}" (${changes.join(', ')})`);
+    audit({
+      outcome: changes.length || rejected.length ? 'applied' : 'refused',
+      task: task._id,
+      taskTitle: task.title,
+      changes: diff,
+    });
     if (addedAssignees.length) {
       notifyAssignment({
         task,
@@ -426,6 +497,8 @@ const commandBoard = async (req, res) => {
       project,
       userName: req.user.name || 'A teammate',
       selfOnly: !canAssignOthers(role),
+      // Traces an audit row back to what the user actually typed.
+      prompt: String(message || '').slice(0, 500),
     };
 
     const messages = [
@@ -519,7 +592,7 @@ const commandBoard = async (req, res) => {
     });
   } catch (error) {
     console.error('Command board error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -545,7 +618,7 @@ const getProjectHealth = async (req, res) => {
     res.status(200).json({ success: true, report });
   } catch (error) {
     console.error('Get project health error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -567,7 +640,7 @@ const scanProjectHealth = async (req, res) => {
     res.status(200).json({ success: true, report });
   } catch (error) {
     console.error('Scan project health error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -739,7 +812,7 @@ const quickAddTask = async (req, res) => {
     });
   } catch (error) {
     console.error('Quick add error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -860,7 +933,7 @@ const extractTasksFromNotes = async (req, res) => {
     res.status(200).json({ success: true, aiAvailable: true, items });
   } catch (error) {
     console.error('Extract tasks error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -963,7 +1036,7 @@ const decomposeProject = async (req, res) => {
     res.status(200).json({ success: true, aiAvailable: true, items });
   } catch (error) {
     console.error('Decompose project error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1046,7 +1119,7 @@ const bulkCreateTasks = async (req, res) => {
     res.status(201).json({ success: true, tasks: created });
   } catch (error) {
     console.error('Bulk create tasks error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1091,7 +1164,7 @@ const semanticSearch = async (req, res) => {
     res.status(200).json({ success: true, method, results: results.map(searchResultShape) });
   } catch (error) {
     console.error('Semantic search error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1116,7 +1189,7 @@ const findSimilarTasks = async (req, res) => {
     res.status(200).json({ success: true, results: results.map(searchResultShape) });
   } catch (error) {
     console.error('Similar tasks error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1205,7 +1278,7 @@ const askBoard = async (req, res) => {
     res.status(200).json({ success: true, aiAvailable: true, answer, cited, sources });
   } catch (error) {
     console.error('Ask board error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1253,7 +1326,7 @@ const globalSearch = async (req, res) => {
     });
   } catch (error) {
     console.error('Global search error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1475,7 +1548,7 @@ const getTodayPlan = async (req, res) => {
     });
   } catch (error) {
     console.error('Today plan error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 
@@ -1606,7 +1679,7 @@ const getAiOps = async (req, res) => {
     });
   } catch (error) {
     console.error('AI ops error:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: process.env.NODE_ENV === 'production' ? undefined : error.message });
   }
 };
 

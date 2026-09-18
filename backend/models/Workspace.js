@@ -72,6 +72,16 @@ const workspaceSchema = new mongoose.Schema(
   }
 );
 
+// Membership resolution is the hot path of the entire API: every tenant-scoped
+// list endpoint starts by asking "which workspaces is this user in?".
+//
+//   Workspace.find({ $or: [{ owner: userId }, { 'members.user': userId }] })
+//
+// A $or needs an index on EACH branch to avoid a collection scan — one compound
+// index cannot serve both. `members.user` is multikey (members is an array).
+workspaceSchema.index({ owner: 1 });
+workspaceSchema.index({ 'members.user': 1 });
+
 // Automatically add owner to members when workspace is created
 workspaceSchema.pre('save', function () {
   if (this.isNew) {
