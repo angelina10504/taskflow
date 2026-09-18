@@ -1,9 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&display=swap');
 
+/* Chakra v3 emits component styles inside CSS cascade layers (@layer recipes).
+   Unlayered CSS beats layered CSS regardless of specificity, so a blanket
+   `* { margin: 0; padding: 0 }` here silently strips the padding off every
+   Chakra button, input and textarea in the app — which is exactly what it was
+   doing. Reset only what needs it, and leave component internals to Chakra. */
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
+}
+
+/* The document-level spacing the blanket reset was actually there for. */
+body,
+h1, h2, h3, h4, h5, h6,
+p, figure, blockquote, dl, dd {
+  margin: 0;
+}
+
+ul[class], ol[class] {
+  padding: 0;
+  list-style: none;
 }
 
 body {
