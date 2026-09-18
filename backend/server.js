@@ -23,6 +23,7 @@ console.log('📍 MongoDB URI exists:', !!process.env.MONGO_URI);
 // degrade to their deterministic fallbacks (getClient() returns null) and /ops
 // carries the reason. A typo in one env var must not take the whole API down.
 const { validateModelConfig } = require('./config/aiModels');
+const { aiStatus } = require('./utils/aiClient');
 const modelConfig = validateModelConfig();
 if (modelConfig.problems.length) {
   console.warn('⚠️  AI model configuration:');
@@ -56,9 +57,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check
+// Health check.
+//
+// Reports AI configuration next to liveness so a deploy can be verified without
+// logging in. The same reason is already written to the boot log and served by
+// /api/ai/ops, but logs scroll away and /ops needs auth — so a host env still
+// pinning a retired model stayed invisible until a user hit an AI feature and
+// got a fallback. One unauthenticated GET now answers it.
+//
+// Safe to expose: aiStatus() reports only WHETHER a key is present, never its
+// value, and the model ids it names are already public in config/aiModels.js.
+//
+// `status` stays 'ok' when AI is misconfigured, and that is deliberate — the AI
+// layer is degradable by design, so a bad model id is not an unhealthy process.
+// Flipping this to 503 would make the platform restart a server that is serving
+// auth, tasks and the board perfectly well.
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  const { available, reason, detail, model } = aiStatus();
+  res.status(200).json({
+    status: 'ok',
+    ai: { available, reason: reason || null, model: model || null, detail: detail || null },
+  });
 });
 
 // Simple test route

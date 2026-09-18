@@ -437,6 +437,11 @@ const commandBoard = async (req, res) => {
     ];
 
     let reply = '';
+    // Why the loop stopped. A command that ends with work left undone and one
+    // that ends because the model was done look identical from the outside —
+    // both reach the client as a 200 with whatever `actions` accumulated — so
+    // record the distinction rather than inferring it from the reply text.
+    let exit = 'max_iterations';
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const completion = await loggedChat(
         ai,
@@ -449,13 +454,31 @@ const commandBoard = async (req, res) => {
         { user: req.user.id, feature: 'command' }
       );
 
-      const msg = completion.choices?.[0]?.message;
-      if (!msg) break;
+      const choice = completion.choices?.[0];
+      const msg = choice?.message;
+
+      // The loop breaks on "no tool calls", which a finished model and a model
+      // truncated mid-thought both produce. finish_reason is the only field that
+      // tells them apart: 'stop' means it chose to end, 'length' means it ran out
+      // of max_tokens. Reasoning models spend completion budget before emitting
+      // anything, so 'length' with empty content is a real outcome here.
+      const u = completion.usage || {};
+      console.log(
+        `[command] iter=${i} finish=${choice?.finish_reason} tools=${(msg?.tool_calls || []).length} ` +
+          `content=${(msg?.content || '').length}ch prompt=${u.prompt_tokens} completion=${u.completion_tokens} ` +
+          `reasoning=${u.completion_tokens_details?.reasoning_tokens ?? 'n/a'}`
+      );
+
+      if (!msg) {
+        exit = 'no_message';
+        break;
+      }
       messages.push(msg);
 
       const toolCalls = msg.tool_calls || [];
       if (toolCalls.length === 0) {
         reply = (msg.content || '').trim();
+        exit = reply ? 'replied' : 'empty_reply';
         break;
       }
 
@@ -479,6 +502,11 @@ const commandBoard = async (req, res) => {
         });
       }
     }
+
+    console.log(
+      `[command] exit=${exit} actions=${actions.length} replyLen=${reply.length} ` +
+        `msg=${JSON.stringify(String(req.body.message || '').slice(0, 80))}`
+    );
 
     const updatedTasks = await refreshTasks();
 
