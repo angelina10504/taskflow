@@ -13,3 +13,7 @@ npm-debug.log*
 
 # OS
 .DS_Store
+
+# Keploy recordings — contain live secrets (Groq key, JWTs); keep out of git until reviewed
+keploy/
+keploy-run/

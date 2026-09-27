@@ -1,5 +1,5 @@
 # CLAUDE.md — TaskFlow
-
+   Never read, echo, sed, or display values from .env or any line containing "gsk_" or "Authorization". Search with grep -c or -l only.
 Guidance for Claude Code working in this repo. `README.md` is the feature tour; this file is the
 operational contract: invariants that must hold, conventions to match, and the gaps that are
 currently unfixed. **Read the Multi-tenancy and Socket sections before touching anything that
