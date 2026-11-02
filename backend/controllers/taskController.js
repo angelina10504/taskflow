@@ -92,15 +92,70 @@ const getTasks = async (req, res) => {
       });
     }
 
-    const tasks = await Task.find({ project: projectId })
+    // Pagination.
+    //
+    // This query was unbounded: every task in the project, every request. A
+    // Kanban board is self-limiting in practice (nobody drags 2,000 cards), but
+    // "in practice" is not a bound — one import or one long-lived project and
+    // the endpoint ships the whole collection over the wire and into React
+    // state.
+    //
+    // Backward compatible on purpose. The board needs EVERY task to render its
+    // columns correctly: paginating it by default would silently drop cards
+    // from whichever column sorted last, which is worse than a large response.
+    // So the default stays "all", and pagination is opt-in via ?page or ?limit
+    // — the list and search views pass them, the board does not.
+    //
+    // 200 is a ceiling, not a default: a caller asking for 10,000 gets 200.
+    const MAX_LIMIT = 200;
+    const paginated = req.query.page !== undefined || req.query.limit !== undefined;
+
+    const filter = { project: projectId };
+    // Optional status filter, so a caller can page one column at a time. The
+    // enum check matters: an unvalidated value here would silently return an
+    // empty page rather than an error.
+    // Read the valid statuses off the schema rather than hardcoding them: the
+    // list already exists twice (models/Task.js and aiController.js) and a third
+    // copy is one more place to forget when a column is added.
+    const statuses = Task.schema.path('status').enumValues;
+    if (req.query.status && statuses.includes(req.query.status)) {
+      filter.status = req.query.status;
+    }
+
+    let query = Task.find(filter)
       .populate('createdBy', 'name email avatar')
       .populate('assignedTo', 'name email avatar')
       .sort('position');
+
+    let page = 1;
+    let limit = null;
+
+    if (paginated) {
+      page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      query = query.skip((page - 1) * limit).limit(limit);
+    }
+
+    // countDocuments only when paginating — an extra round trip is pointless
+    // when the response already contains every row.
+    const [tasks, total] = await Promise.all([
+      query,
+      paginated ? Task.countDocuments(filter) : Promise.resolve(null),
+    ]);
 
     res.status(200).json({
       success: true,
       count: tasks.length,
       tasks,
+      ...(paginated && {
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+          hasMore: page * limit < total,
+        },
+      }),
     });
   } catch (error) {
     console.error('Get tasks error:', error);

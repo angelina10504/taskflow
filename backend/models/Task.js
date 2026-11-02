@@ -89,6 +89,20 @@ const taskSchema = new mongoose.Schema(
 // Index for faster queries
 taskSchema.index({ project: 1, status: 1, position: 1 });
 
+// The board read — "every task in this project, ordered by position" — is the
+// hottest query in the app, and the index above does not serve it: `status`
+// sits between the equality field and the sort field, so Mongo cannot walk the
+// index in position order. Measured on 500 tasks in one project
+// (tests/pagination.test.js prints the plan):
+//
+//   {project, status, position}   keysExamined 500, in-memory SORT stage
+//   {project, position}           keysExamined  50, no SORT stage
+//
+// Ten times fewer index keys and the sort disappears. The existing compound
+// index is kept because it still serves per-column queries (?status=todo),
+// which this one cannot.
+taskSchema.index({ project: 1, position: 1 });
+
 // The workspace field is denormalized onto Task (see the field definition above)
 // precisely so tenant-scoped reads never join through Project — but that only
 // pays off with an index behind it. Without these, every cross-workspace query
