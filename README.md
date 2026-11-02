@@ -309,7 +309,7 @@ tests measure whether *authentication and business logic* do. Neither substitute
 
 ## Known limitations
 
-Accurate as of 2026-11-02. None are hidden behind a feature flag or a "coming soon".
+Accurate as of 2026-11-03. None are hidden behind a feature flag or a "coming soon".
 
 **No transactions anywhere.** `reorderTasks` issues its updates via `Promise.all` with no MongoDB session,
 so a partial failure leaves the board in an inconsistent order with no rollback. `bulk-create` has the same
@@ -354,10 +354,17 @@ log, not in the UI.
 short-lived and the refresh token is httpOnly, so an XSS yields a bounded window rather than durable
 access. Worth revisiting if the app ever renders untrusted HTML.
 
-**Mobile is verified for layout, not yet end to end.** The login and landing screens carry no horizontal
-overflow at 375px, and touch drag-and-drop was fixed this session (`TouchSensor` plus `touch-action: none`
-— without them the browser scrolled instead of dragging, making the board unusable on a phone). The
-authenticated flows on a narrow screen have not been walked through.
+**Mobile is walked through, not automated.** The flow was exercised by hand at 375x812 against a local
+throwaway database — register, log in, dashboard, nav drawer, board, and a real touch drag that moved a
+card and persisted the change. Three bugs came out of it and are fixed: drag-and-drop did nothing on touch
+(`PointerSensor` with a distance constraint cannot work there, since the browser claims the same gesture
+for scrolling — now `TouchSensor` with a hold delay plus `touch-action: none`); the sidebar never collapsed
+(a hardcoded 240px column left 135px of a 375px viewport and the document measured 535px wide); and the
+Kanban columns were crushed to ~59px each, rendering card titles one character per line.
+
+What that does *not* mean is that mobile is covered. There are no viewport-level regression tests, so
+nothing stops the next layout change from reintroducing any of the three. Tablet widths and landscape were
+not checked at all, and the walkthrough was a desktop browser emulating a phone, not a real device.
 
 ## Stack
 
