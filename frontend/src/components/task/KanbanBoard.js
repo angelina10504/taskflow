@@ -6,6 +6,7 @@ import {
   pointerWithin,
   rectIntersection,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -98,8 +99,24 @@ const KanbanBoard = ({
   const [moveNotifs, setMoveNotifs] = useState([]);
   const { dark, textMuted } = useColors();
 
+  // Two sensors, because touch and mouse need opposite activation rules.
+  //
+  // PointerSensor alone does fire on touch, but a distance constraint cannot
+  // work there: the finger movement that would start a drag is the same gesture
+  // the browser uses to scroll the column, and the browser wins. The result was
+  // that dragging a card on a phone just scrolled the page — the Kanban board,
+  // the core of the product, was unusable on mobile.
+  //
+  // TouchSensor with a delay fixes it by separating the two gestures in TIME
+  // rather than distance: press and hold for 200ms to drag, swipe immediately
+  // to scroll. `tolerance` allows a little finger drift during that hold so a
+  // slightly unsteady press still registers as a drag rather than cancelling.
+  //
+  // dnd-kit picks whichever sensor matches the input, so mouse users keep the
+  // immediate 8px drag and lose nothing.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
   // Track the status the task had before this drag started

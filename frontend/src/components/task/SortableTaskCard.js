@@ -17,6 +17,11 @@ const SortableTaskCard = ({ task, onClick, workspaceMemberCount }) => {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    // Required for touch dragging. Without it the browser treats the gesture as
+    // a scroll and claims it before dnd-kit sees the move, so a card cannot be
+    // dragged on a phone at all. dnd-kit's own guidance is to set this on any
+    // element carrying drag listeners.
+    touchAction: 'none',
   };
 
   return (
