@@ -4,8 +4,9 @@ TaskFlow is a multi-tenant Kanban application — workspaces, projects, tasks, r
 language model wired into eight features. The Kanban part is the surface. The part worth reviewing is the
 boundary drawn around the model: every metric the model talks about is computed in code before the call,
 every id it returns is filtered against a real membership list before it reaches the database, every
-feature has a deterministic fallback that runs when the model is unavailable or wrong, and the prompts
-themselves are regression-tested by an eval harness that gates CI. The operating rule is *model proposes,
+feature has a deterministic fallback that runs when the model is unavailable or wrong, the prompts
+themselves are regression-tested by an eval harness that gates CI, and every board mutation the model makes
+is recorded in an audit trail alongside whatever validation refused. The operating rule is *model proposes,
 code validates* — the model is treated as an unreliable component with a useful output, not as a source of
 truth and never as an authorization decision.
 
@@ -26,6 +27,12 @@ npm run dev               # http://localhost:5001
 cd frontend
 npm install
 npm start                 # http://localhost:3000
+```
+
+Run the test suite (needs a local `mongod` binary — `brew install mongodb-community`):
+
+```bash
+cd backend && npm test
 ```
 
 The only two values you must set in `backend/.env` are:
@@ -52,6 +59,34 @@ OAuth). Anything left blank disables its feature rather than breaking startup.
 Any OpenAI-compatible endpoint works — Groq, Gemini, OpenRouter, a local Ollama — by changing `AI_MODEL`
 and `AI_BASE_URL`. Note that `config/aiModels.js` knows the ids and prices of Groq models specifically; a
 model outside that list needs an entry there or `AI_ALLOW_UNKNOWN_MODEL=1`.
+
+## Architecture
+
+```
+React 19 (CRA)                     Express 5
+  ├─ axios + refresh interceptor ──► /api/*  ── protect ── controllers ── Mongoose ── MongoDB
+  └─ socket.io-client ─────────────► io.use(token) ── room auth ── presence (in-process Map)
+```
+
+**The workspace is the tenant boundary.** Projects and tasks have no independent access control — they
+inherit it from their workspace. Every request that touches user content follows the same three steps:
+resolve the resource, verify membership, *then* query. A client-supplied id is an untrusted claim of
+access, never proof of it. `Task` denormalizes `workspace` alongside `project` so tenant-scoped reads
+never need a join.
+
+**Auth is two tokens with two secrets.** A short-lived access token in `Authorization: Bearer`, and a
+refresh token in an httpOnly cookie that only `POST /api/auth/refresh-token` ever verifies. A response
+interceptor catches a 401, refreshes once, and retries — guarded against refresh loops.
+
+**Realtime is presentation only.** Sockets authenticate on handshake and re-check workspace membership on
+every room join, but every durable write still goes through the protected REST API. A relayed `task-moved`
+payload is never persisted.
+
+**The AI layer is bounded** — see the next section. The short version: deterministic maths in code, the
+model selects and explains, strict validation before anything is written, and a rule-based fallback for
+every feature.
+
+Full operational contract and invariants: [`CLAUDE.md`](CLAUDE.md).
 
 ## Architecture: the AI layer
 
@@ -239,58 +274,97 @@ fine, model is dead" — different problems with different fixes.
 catalog. The eval harness is the deliberate exception to the degrade rule: it exits `2` on a bad model,
 because a run against a nonexistent model spends quota to produce no signal.
 
+## Testing
+
+```bash
+cd backend && npm test        # 73 tests, ~12s
+```
+
+| Suite | Tests | Covers |
+|---|--:|---|
+| `auth` | 12 | wrong password, unknown email, user enumeration, duplicate registration, malformed / forged / expired tokens, deleted user, access token signed with the refresh secret |
+| `tenancy` | 10 | an outsider holding a **valid** token naming a real id — read, list, update, delete across every resource, plus global AI search |
+| `rbac` | 10 | viewer read-only, member self-assign only, admin assigns anyone, owner cannot be removed, member cannot remove members |
+| `tasks` | 11 | CRUD, defaults, enum rejection, the `completedAt` hook in both directions, `workspace` denormalization |
+| `invitations` | 9 | public preview, redemption, token consumed once, wrong-account refusal, expiry reaped |
+| `pagination` | 11 | opt-in paging, limit cap, filters, tenant check, and an `explain()` assertion that the board read is index-backed |
+| `socket` | 10 | handshake refusal on every bad-token shape, plus room authorization for member / non-member / unknown project |
+
+Mutation tests assert the database afterwards, not just the status code — a 403 that still wrote is the
+bug worth catching.
+
+The runner is `node --test`, not Jest. Jest was tried first: inside its module sandbox the MongoDB driver
+fails to assemble its handshake metadata and every connection is rejected with *"Missing required
+sub-document 'driver' in the client metadata document"*. Reproduced against both `mongodb-memory-server`
+and a plain local `mongod`, while the same connection succeeds under plain `node` — so it was the sandbox,
+not the database. The alternative was pinning Mongoose down a major version to suit the test runner, which
+is the wrong way round.
+
+Tests run against an ephemeral `mongodb-memory-server` (backed by the local Homebrew `mongod`) with
+test-only secrets, no API key, and placeholder SMTP — so no run can touch production data, spend a token,
+or send mail.
+
+The prompt eval harness is separate and complementary: it measures whether the *model* behaves; these
+tests measure whether *authentication and business logic* do. Neither substitutes for the other.
+
 ## Known limitations
 
-These are accurate as of 2026-08-24. None are hidden behind a feature flag or a "coming soon".
+Accurate as of 2026-11-02. None are hidden behind a feature flag or a "coming soon".
 
-**No unit or integration tests.** `npm test` in `backend/` exits 1 with "no test specified". There are zero
-test files in the repository. The eval harness is the only automated testing that exists, and it tests
-prompt behaviour, not application logic — controllers, auth middleware, and the tenancy checks have no
-coverage at all.
-
-**The Socket.IO layer is unauthenticated.** There is no `io.use()` handshake middleware. Any client that
-can reach the server may connect without a token, and `join-project` accepts both a `projectId` and a
-client-supplied `user` object. Given a project id — a 24-hex string that appears in board URLs — a
-connection can join the room and receive `task-moved` payloads and health broadcasts, appear in the
-presence list as any user, and forge board activity for everyone else in the room. Durable writes all go
-through the protected REST API, so this is a confidentiality and trust problem rather than a data-integrity
-one. Fixing it requires verifying the access token in handshake middleware and re-checking membership on
-room join.
+**No transactions anywhere.** `reorderTasks` issues its updates via `Promise.all` with no MongoDB session,
+so a partial failure leaves the board in an inconsistent order with no rollback. `bulk-create` has the same
+shape: a failure halfway through leaves half a decomposition on the board.
 
 **Presence is in-process and will not scale horizontally.** Online users are tracked in a `Map` in
-`server.js`. Two instances behind a load balancer would each report only their own connections.
+`server.js`, and `socket.to(room).emit()` only reaches clients on the same instance. Two instances behind a
+load balancer would each report only their own connections. **This is the hard blocker on running more than
+one instance** — it needs `@socket.io/redis-adapter` and presence moved into Redis.
 
-**No pagination anywhere.** Task, project and search endpoints return full result sets. Fine at the scale
-this has been used at; a workspace with tens of thousands of tasks would degrade.
+**Rate limiting is per-instance.** The limiters use the default in-memory store, so counters reset on
+deploy and are not shared across instances. Honest for a single instance; a Redis store is required before
+it is a real global limit.
 
-**Batch reorder is not transactional.** `reorderTasks` issues its updates via `Promise.all` with no MongoDB
-session or transaction. A partial failure leaves the board in an inconsistent order with no rollback.
-There are no transactions anywhere in the codebase.
+**Pagination covers the task list only.** `?page` / `?limit` / `?status` are opt-in there — the Kanban
+board deliberately still fetches every task, because paginating it would silently drop cards from whichever
+column sorts last. Project list and search endpoints are still unbounded.
 
-**The workspace invitation flow is half-built.** Inviting an existing user works. Inviting a *new* user
-mints a token, stores it, and emails a link — but there is no redeem route, no controller to consume the
-invitation, and no `/invite/:token` route in the frontend. The emailed link is dead, expired invitations are
-never reaped, and the API returns success, so the inviter believes it worked.
+**Semantic search has an O(n) fallback.** Off Atlas, `taskSearch` loads every task carrying an embedding
+and computes cosine similarity in Node. Correct, and fine at this scale, but it pulls the whole vector set
+into app memory.
 
-**Per-feature model routing is built but inert**, for the reasons in the routing section above.
+**Per-feature model routing is built but inert.** `getModel(feature)` and the config map exist; the map is
+empty because the measurement that justified routing `decompose` to a cheaper model was taken on a model
+Groq has since retired. A route without a current measurement is a guess with extra machinery.
 
-**The `/ops` frontend does not render the new `ai` block yet.** The API returns it; the page has not been
-updated to surface it, so a misconfigured model is currently visible in the API response and the server log
-but not in the UI.
+**Eval coverage is uneven.** 50 of the 71 prompt cases target `quick-add`. The `command` endpoint — the
+only one where the model chooses *actions*, including `delete_task` — has no eval coverage at all, and its
+prompt is not exported through `__evalInternals`, so the harness cannot currently reach it. `velocity`,
+`ask` and `health` are likewise uncovered.
+
+**`max_tokens` is sized per feature, not per model.** Raising quick-add's cap from 300 to 900 fixed the
+truncation that was failing 13 eval cases, but the same class of failure has since appeared in the `today`
+suite at its 900 ceiling, and `ask` sits at 400 with no coverage. The ceiling should be derived from a
+measured p99 rather than hand-picked.
+
+**The `/ops` frontend does not render the `ai` block.** The API returns it and `/api/health` reports it,
+but the page has not been updated, so a misconfigured model is visible in the API response and the server
+log, not in the UI.
 
 **Access tokens live in `localStorage`** — an accepted trade-off rather than an oversight. The token is
 short-lived and the refresh token is httpOnly, so an XSS yields a bounded window rather than durable
 access. Worth revisiting if the app ever renders untrusted HTML.
 
-**Eval coverage is uneven.** 50 of the 65 prompt cases target `quick-add`. `decompose` has 6, and the
-`command`, `velocity`, `ask` and `health` features have no eval coverage at all.
+**Mobile is verified for layout, not yet end to end.** The login and landing screens carry no horizontal
+overflow at 375px, and touch drag-and-drop was fixed this session (`TouchSensor` plus `touch-action: none`
+— without them the browser scrolled instead of dragging, making the board unusable on a phone). The
+authenticated flows on a narrow screen have not been walked through.
 
 ## Stack
 
 React 19, React Router 7, Chakra UI 3 · Node 20, Express 5, MongoDB + Mongoose, Socket.IO · OpenAI SDK
 against any OpenAI-compatible endpoint (default Groq) · Transformers.js MiniLM embeddings with Atlas
 `$vectorSearch` and an in-memory cosine fallback · JWT access + refresh tokens, bcryptjs, Google OAuth ·
-`@dnd-kit` for drag and drop.
+`@dnd-kit` for drag and drop · `node --test` + supertest + `mongodb-memory-server` for the API suite.
 
 Operational contract, multi-tenancy invariants and conventions: [`CLAUDE.md`](CLAUDE.md).
 
