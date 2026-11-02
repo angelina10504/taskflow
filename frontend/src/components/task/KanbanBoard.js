@@ -403,7 +403,22 @@ const KanbanBoard = ({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <Box flex={1} display="flex" gap={4} overflow="hidden">
+        {/* Below `md` the four columns cannot fit: at 375px they collapsed to
+            ~59px each and card titles rendered one character per line. Scroll
+            them horizontally instead — the standard mobile Kanban pattern —
+            while the desktop layout is untouched. overflowY stays hidden
+            because each column scrolls its own task list. */}
+        <Box
+          flex={1}
+          display="flex"
+          gap={4}
+          overflowX={{ base: 'auto', md: 'hidden' }}
+          overflowY="hidden"
+          // Momentum scrolling on iOS, and room for the scrollbar so it does
+          // not sit on top of the last card.
+          css={{ WebkitOverflowScrolling: 'touch' }}
+          pb={{ base: 2, md: 0 }}
+        >
           {COLUMNS.map((status) => (
             <KanbanColumn
               key={status}

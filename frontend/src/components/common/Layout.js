@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { isPast, isToday } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
-import { LuKanban, LuHouse, LuFolders, LuLogOut, LuSearch, LuSunrise, LuActivity } from 'react-icons/lu';
+import { LuKanban, LuHouse, LuFolders, LuLogOut, LuSearch, LuSunrise, LuActivity, LuMenu } from 'react-icons/lu';
 import * as taskService from '../../services/taskService';
 import GlobalSearchPalette from '../ai/GlobalSearchPalette';
 
@@ -23,6 +23,10 @@ const Layout = ({ children }) => {
   const toggleColorMode = () => setTheme(dark ? 'light' : 'dark');
 
   const [searchOpen, setSearchOpen] = useState(false);
+  // Mobile only: the sidebar is a fixed 240px column, which at 375px left just
+  // 135px for the page and made the whole document scroll sideways. Below `md`
+  // it becomes an overlay instead, opened from the header button below.
+  const [navOpen, setNavOpen] = useState(false);
   const [counts, setCounts] = useState({ overdue: 0, week: 0, review: 0 });
   const lastCountFetch = useRef(0);
 
@@ -105,6 +109,55 @@ const Layout = ({ children }) => {
 
   return (
     <Box display="flex" minH="100vh">
+      {/* Mobile header. Hidden from `md` up, where the sidebar is always
+          visible and needs no trigger. */}
+      <Box
+        display={{ base: 'flex', md: 'none' }}
+        position="fixed"
+        top={0}
+        left={0}
+        right={0}
+        h="56px"
+        alignItems="center"
+        gap={3}
+        px={4}
+        bg={sidebarBg}
+        borderBottom="1px solid"
+        borderColor={borderColor}
+        zIndex={90}
+      >
+        <Box
+          as="button"
+          aria-label="Open navigation"
+          onClick={() => setNavOpen(true)}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          w="44px"
+          h="44px"
+          ml="-10px"
+          borderRadius="md"
+          color={textPrimary}
+          _hover={{ bg: hoverBg }}
+        >
+          <LuMenu size={22} />
+        </Box>
+        <Text fontWeight="bold" color={textPrimary}>TaskFlow</Text>
+      </Box>
+
+      {/* Backdrop. Only rendered while the mobile drawer is open, so it can
+          never swallow taps on desktop. */}
+      {navOpen && (
+        <Box
+          display={{ base: 'block', md: 'none' }}
+          position="fixed"
+          inset={0}
+          bg="blackAlpha.600"
+          zIndex={99}
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <Box
         w="240px"
@@ -118,7 +171,11 @@ const Layout = ({ children }) => {
         top={0}
         left={0}
         zIndex={100}
-        transition="background 0.2s"
+        // Translated off-canvas on mobile rather than display:none, so opening
+        // it animates and the nav keeps its focus order.
+        transform={{ base: navOpen ? 'translateX(0)' : 'translateX(-100%)', md: 'translateX(0)' }}
+        transition="transform 0.2s ease, background 0.2s"
+        onClick={() => setNavOpen(false)}
       >
         {/* Logo + Theme Toggle */}
         <Box
@@ -413,7 +470,13 @@ const Layout = ({ children }) => {
       {/* Main Content */}
       <Box
         flex="1"
-        ml="240px"
+        // The gutter only exists where the sidebar does. Leaving it at 240px on
+        // mobile is what pushed the document to 535px wide at a 375px viewport.
+        ml={{ base: 0, md: '240px' }}
+        // Clear the fixed mobile header; no offset needed once it is hidden.
+        pt={{ base: '56px', md: 0 }}
+        maxW="100%"
+        overflowX="hidden"
         bg={contentBg}
         minH="100vh"
         transition="background 0.2s"

@@ -21,7 +21,15 @@ const KanbanColumn = ({ status, tasks, onTaskClick, workspaceMemberCount }) => {
   const columnBg = dark ? '#151d2e' : 'gray.50';
 
   return (
-    <Box flex={1} minW="0" display="flex" flexDirection="column">
+    <Box
+      flex={{ base: '0 0 auto', md: 1 }}
+      // minW 0 is what let the column shrink to 59px on a phone. Below `md`
+      // give it a real width and stop it flexing; from `md` up restore the
+      // original equal-width behaviour.
+      minW={{ base: '265px', md: '0' }}
+      display="flex"
+      flexDirection="column"
+    >
       <Box
         bg={columnBg}
         p={3}

@@ -28,6 +28,16 @@
       ],
       "cwd": "backend",
       "port": 5001
+    },
+    {
+      "name": "backend-localdb",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "MONGO_URI=mongodb://127.0.0.1:27019/taskflow_mobile node server.js"
+      ],
+      "cwd": "backend",
+      "port": 5001
     }
   ]
 }
