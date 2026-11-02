@@ -14,6 +14,7 @@ import Workspaces from './pages/Workspaces';
 import WorkspaceDetail from './pages/WorkspaceDetail';
 import ProjectDetail from './pages/ProjectDetail';
 import Profile from './pages/Profile';
+import AcceptInvite from './pages/AcceptInvite';
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* Public: an invitee may not have an account yet, and the page
+              previews the invitation before asking them to sign up. */}
+          <Route path="/invite/:token" element={<AcceptInvite />} />
           <Route
             path="/dashboard"
             element={

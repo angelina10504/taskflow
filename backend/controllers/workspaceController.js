@@ -426,6 +426,122 @@ const removeMember = async (req, res) => {
   }
 };
 
+// @desc    Look up an invitation by token (unauthenticated preview)
+// @route   GET /api/workspaces/invitations/:token
+// @access  Public
+//
+// Lets the invite page say "You've been invited to X as a member" before the
+// visitor has signed in, so they know what they are registering for. Returns
+// only the workspace name, the role and the invited email — never the member
+// list, never the workspace id, and never other invitations. The token itself
+// is the bearer credential here (32 random bytes), so the response must stay
+// minimal: anyone holding the link can call this.
+const getInvitation = async (req, res) => {
+  try {
+    const workspace = await Workspace.findOne({ 'invitations.token': req.params.token })
+      .select('name invitations')
+      .populate('invitations.invitedBy', 'name');
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'This invitation link is not valid.' });
+    }
+
+    const invitation = workspace.invitations.find((i) => i.token === req.params.token);
+    if (invitation.expiresAt < new Date()) {
+      return res.status(410).json({ success: false, message: 'This invitation has expired.' });
+    }
+
+    res.status(200).json({
+      success: true,
+      invitation: {
+        workspaceName: workspace.name,
+        role: invitation.role,
+        email: invitation.email,
+        invitedBy: invitation.invitedBy?.name || null,
+        expiresAt: invitation.expiresAt,
+      },
+    });
+  } catch (error) {
+    console.error('Get invitation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'production' ? undefined : error.message,
+    });
+  }
+};
+
+// @desc    Redeem an invitation
+// @route   POST /api/workspaces/invitations/:token/accept
+// @access  Private
+//
+// Completes the half-built flow: inviteMember minted tokens that nothing could
+// redeem, so every emailed link was dead and `invitations[]` only ever grew.
+//
+// Three deliberate rules:
+//
+// 1. The caller must be authenticated. The invitation says WHICH account may
+//    join, not that a new one should be created — registration happens first,
+//    then redemption. `protect` enforces this.
+// 2. The authenticated email must match the invited email. Without this the
+//    token alone would be enough, so a forwarded or leaked link would let any
+//    account join. The token proves the invitation exists; the email match
+//    proves the holder is its intended recipient.
+// 3. The invitation is pulled whether or not it was used. Redeeming removes it;
+//    so does finding it expired. `invitations[]` must not grow forever.
+const acceptInvitation = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const workspace = await Workspace.findOne({ 'invitations.token': token });
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'This invitation link is not valid.' });
+    }
+
+    const invitation = workspace.invitations.find((i) => i.token === token);
+
+    // Expired: reap it rather than leaving it to accumulate.
+    if (invitation.expiresAt < new Date()) {
+      workspace.invitations.pull({ _id: invitation._id });
+      await workspace.save();
+      return res.status(410).json({ success: false, message: 'This invitation has expired.' });
+    }
+
+    // The invitation names an email, not a user id — the account may not have
+    // existed when it was sent.
+    const user = await User.findById(req.user.id).select('email');
+    if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: `This invitation was sent to ${invitation.email}. Sign in with that address to accept it.`,
+      });
+    }
+
+    // Idempotent: a double-click on the accept button must not add a second
+    // membership row.
+    const already = workspace.members.some((m) => m.user.toString() === String(req.user.id));
+    if (!already) {
+      workspace.members.push({ user: req.user.id, role: invitation.role });
+    }
+
+    workspace.invitations.pull({ _id: invitation._id });
+    await workspace.save();
+
+    res.status(200).json({
+      success: true,
+      message: `You've joined "${workspace.name}".`,
+      workspace: { _id: workspace._id, name: workspace.name },
+      role: invitation.role,
+    });
+  } catch (error) {
+    console.error('Accept invitation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'production' ? undefined : error.message,
+    });
+  }
+};
+
 module.exports = {
   getWorkspaces,
   getWorkspace,
@@ -434,5 +550,7 @@ module.exports = {
   deleteWorkspace,
   leaveWorkspace,
   inviteMember,     
-  removeMember,  
+  removeMember,
+  getInvitation,
+  acceptInvitation,
 };
