@@ -41,8 +41,15 @@ if (modelConfig.problems.length) {
   console.log('🤖 AI model config OK');
 }
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB.
+//
+// Only when this file is the entry point. Required as a module (by the test
+// suite, which supplies its own in-memory Mongo) it must not reach for the
+// production cluster, bind a port, or schedule cron — see the bottom of the
+// file. `require.main === module` is true only for `node server.js`.
+const IS_ENTRYPOINT = require.main === module;
+
+if (IS_ENTRYPOINT) connectDB();
 
 // Initialize Express app
 const app = express();
@@ -312,28 +319,41 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server
+// Start server — entry point only. Tests import `app` and drive it through
+// supertest, which needs no listening socket.
 const PORT = process.env.PORT || 5001;
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-});
+if (IS_ENTRYPOINT) {
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
+}
 
 // --- Risk Radar: proactive project health scans ---
-const cron = require('node-cron');
-const { scanAllActiveProjects } = require('./utils/riskRadar');
+//
+// Entry point only. Under test these would schedule a cron job and a 15s timer
+// that keep the Node event loop alive, so Jest would hang after the last
+// assertion instead of exiting.
+if (IS_ENTRYPOINT) {
+  const cron = require('node-cron');
+  const { scanAllActiveProjects } = require('./utils/riskRadar');
 
-// Daily scan at 08:00 server time. Note: on free-tier hosts that sleep when idle,
-// the process must be awake for this to fire — the boot catch-up below covers gaps.
-cron.schedule('0 8 * * *', () => {
-  scanAllActiveProjects(io, 'scheduled').catch((err) =>
-    console.error('Risk radar scheduled scan failed:', err)
-  );
-});
+  // Daily scan at 08:00 server time. Note: on free-tier hosts that sleep when idle,
+  // the process must be awake for this to fire — the boot catch-up below covers gaps.
+  cron.schedule('0 8 * * *', () => {
+    scanAllActiveProjects(io, 'scheduled').catch((err) =>
+      console.error('Risk radar scheduled scan failed:', err)
+    );
+  });
 
-// Catch-up scan shortly after boot; skips projects with a report fresher than ~20h
-// so nodemon restarts and redeploys don't spam new reports.
-setTimeout(() => {
-  scanAllActiveProjects(io, 'boot').catch((err) =>
-    console.error('Risk radar boot scan failed:', err)
-  );
-}, 15000);
+  // Catch-up scan shortly after boot; skips projects with a report fresher than ~20h
+  // so nodemon restarts and redeploys don't spam new reports.
+  setTimeout(() => {
+    scanAllActiveProjects(io, 'boot').catch((err) =>
+      console.error('Risk radar boot scan failed:', err)
+    );
+  }, 15000);
+}
+
+// Exported for the test suite: supertest drives `app` directly, and the socket
+// tests need `httpServer` + `io` to attach a real server on an ephemeral port.
+module.exports = { app, httpServer, io };
